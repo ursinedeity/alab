@@ -79,25 +79,24 @@ class contactmatrix(object):
       else:
 	raise TypeError, "Invalid argument type, numpy.ndarray is required"
 
-  def _removeZeroEntry(self,maskGiven = 0):
-    if maskGiven == 0:
-      self._getZeroEntry()
-    self.matrix = np.delete(self.matrix,self.mask,0)
-    self.matrix = np.delete(self.matrix,self.mask,1)
+  #def _removeZeroEntry(self,maskGiven = 0):
+    #if maskGiven == 0:
+      #self._getZeroEntry()
+    #self.matrix = np.delete(self.matrix,self.mask,0)
+    #self.matrix = np.delete(self.matrix,self.mask,1)
     
-  def _expandZeroEntry(self):
-    for i in range(len(self.mask)):
-      self.mask[i] -= i
-    self.matrix = np.insert(self.matrix,self.mask,0,axis=0)
-    self.matrix = np.insert(self.matrix,self.mask,0,axis=1)
+  #def _expandZeroEntry(self):
+    #for i in range(len(self.mask)):
+      #self.mask[i] -= i
+    #self.matrix = np.insert(self.matrix,self.mask,0,axis=0)
+    #self.matrix = np.insert(self.matrix,self.mask,0,axis=1)
   #===================================================
-  def krnorm(self,mask = None):
+  def krnorm(self,mask = None,**kwargs):
     from alab.krnorm import bnewt
-    maskGiven = self._getMask(mask)
-    self._removeZeroEntry(maskGiven)
-    x = bnewt(self.matrix,check=0)*100
-    self.matrix *= x * x.T
-    self._expandZeroEntry()
+    self._getMask(mask)
+    x = bnewt(self.matrix,mask=self.mask,check=0,**kwargs)*100
+    self.matrix *= x 
+    self.matrix *= x.T
   #====================================================
   def vcnorm(self,iterations=1,mask = None):
     self._getMask(mask)
@@ -110,7 +109,8 @@ class contactmatrix(object):
       rowsum   = 1/rowsum
       rowsum[self.mask] = 0
       self.matrix *= totalsum
-      self.matrix *= rowsum * rowsum.T
+      self.matrix *= rowsum 
+      self.matrix *= rowsum.T
       
   def icenorm(self, **kwargs):
     self.vcnorm(iterations=10, **kwargs)
