@@ -15,34 +15,34 @@ class contactmatrix(object):
       self.matrix=np.zeros((filename,filename),dtype = np.float32)
     elif isinstance(filename,str):
       if not os.path.isfile(filename):
-	raise IOError,"File %s doesn't exist!\n" % (filename)
+        raise IOError,"File %s doesn't exist!\n" % (filename)
       if os.path.splitext(filename)[1] == '.npz':
-	self.matrix = np.load(filename)['matrix']
-	self.idx    = np.load(filename)['idx']
+        self.matrix = np.load(filename)['matrix']
+        self.idx    = np.load(filename)['idx']
       elif os.path.splitext(filename)[1] == '.hdf5':
-	import h5py
-	h5f = h5py.File(filename,'r')
-	self.matrix = h5f['matrix'][:]
-	self.idx    = h5f['idx'][:]
-	h5f.close()
+        import h5py
+        h5f = h5py.File(filename,'r')
+        self.matrix = h5f['matrix'][:]
+        self.idx    = h5f['idx'][:]
+        h5f.close()
       else:
-	from alab.io import loadstream
-	f    = loadstream(filename)
-	s    = f.next()
-	line = re.split('\t+|\s+',s.rstrip())
-	n    = len(line) - 3
-	idx  = []
-	i    = 0
-	idx.append(line[0:3])
-	self.matrix = np.zeros((n,n),dtype = np.float32)
-	self.matrix[i] = line[3:]
-	for s in f:
-	  i += 1
-	  line = re.split('\t+|\s+',s.rstrip())
-	  idx.append(line[0:3])
-	  self.matrix[i] = line[3:]
-	f.close()
-	self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self.idxdtype)
+        from alab.io import loadstream
+        f    = loadstream(filename)
+        s    = f.next()
+        line = re.split('\t+|\s+',s.rstrip())
+        n    = len(line) - 3
+        idx  = []
+        i    = 0
+        idx.append(line[0:3])
+        self.matrix = np.zeros((n,n),dtype = np.float32)
+        self.matrix[i] = line[3:]
+        for s in f:
+          i += 1
+          line = re.split('\t+|\s+',s.rstrip())
+          idx.append(line[0:3])
+          self.matrix[i] = line[3:]
+        f.close()
+        self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self.idxdtype)
 
   #==================================================
   def buildindex(self,chromlist,startlist,endlist):
@@ -74,10 +74,10 @@ class contactmatrix(object):
       return 0
     else:
       if isinstance(mask,np.ndarray):
-	self.mask = mask
-	return 1
+        self.mask = mask
+        return 1
       else:
-	raise TypeError, "Invalid argument type, numpy.ndarray is required"
+        raise TypeError, "Invalid argument type, numpy.ndarray is required"
 
   #def _removeZeroEntry(self,maskGiven = 0):
     #if maskGiven == 0:
@@ -135,15 +135,7 @@ class contactmatrix(object):
     return submatrix
   #====================================================
   def plot(self,figurename,**kwargs):
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-    #if vmax is None: vmax = np.log(self.matrix.max())
-    #
-    fig  = plt.figure()
-    cax  = plt.imshow(np.log(self.matrix), interpolation='nearest', cmap=cm.Reds, **kwargs)
-    #cbar = fig.colorbar(cax, ticks=[0, m.matrix.mean()])
-    plt.show()
-    fig.savefig(figurename,dpi=300)
+    plotmatrix(figurename,np.log(self.matrix),**kwargs)
   #====================================================
   def save(self, filename, mod = 'hdf5', precision=3):
     if mod == 'npz':
@@ -155,3 +147,64 @@ class contactmatrix(object):
       h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
       h5f.close()
       
+def plotmatrix(figurename,matrix,format='png',title=None,**kwargs):
+  """Plot a 2D array with a colorbar.
+  
+  Parameters
+  ----------
+  
+  matrix : a 2d numpy array
+      A 2d array to plot
+  cmap : matplotlib color map
+      Color map used in matrix, e.g cm.Reds, cm.bwr
+  clip_min : float, optional
+      The lower clipping value. If an element of a matrix is <clip_min, it is
+      plotted as clip_min.
+  clip_max : float, optional
+      The upper clipping value.
+  label : str, optional
+      Colorbar label
+  ticklabels1 : list, optional
+      Custom tick labels for the first dimension of the matrix.
+  ticklabels2 : list, optional
+      Custom tick labels for the second dimension of the matrix.
+  """
+  import matplotlib.pyplot as plt
+  from matplotlib import cm
+  
+  clip_min = kwargs.pop('clip_min', -np.inf)
+  clip_max = kwargs.pop('clip_max', np.inf)
+  cmap     = kwargs.pop('cmap',cm.Reds)
+  fig  = plt.figure()
+  if 'ticklabels1' in kwargs:
+    plt.yticks(range(matrix.shape[0]))
+    plt.gca().set_yticklabels(kwargs.pop('ticklabels1'))
+    
+  if 'ticklabels2' in kwargs:
+    plt.xticks(range(matrix.shape[1]))
+    plt.gca().set_xticklabels(kwargs.pop('ticklabels2'))
+    
+  cax  = plt.imshow(np.clip(matrix, a_min=clip_min, a_max=clip_max),
+                    interpolation='nearest',
+                    cmap=cmap,
+                    **kwargs)
+  if title != None:
+    plt.title(title)
+    
+  if 'label' not in kwargs:
+    plt.colorbar()
+  else:
+    plt.colorbar().set_label(kwargs['label'])
+    
+  plt.show()
+
+  if format == 'png':
+    fig.savefig(figurename,dpi=600)
+  elif format == 'pdf':
+    from matplotlib.backends.backend_pdf import PdfPages
+    pp = PdfPages(figurename)
+    pp.savefig(fig,dpi=600)
+    pp.close()
+  
+  plt.close(fig)
+#===================================================
