@@ -12,7 +12,7 @@ def chunking_dot(big_matrix, small_matrix, chunk_size=10000):
   R = np.empty((big_matrix.shape[0], small_matrix.shape[1]))
   for i in range(0, R.shape[0], chunk_size):
     end = i + chunk_size
-    R[i:end] = np.ma.dot(big_matrix[i:end], small_matrix)
+    R[i:end] = np.dot(big_matrix[i:end], small_matrix)
   return R
 
 def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, check = 1, largemem = 0, chunk_size = 10000):
@@ -31,6 +31,7 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
   
   
   (n,m) = A.shape
+  #np.seterr(divide='ignore')
   print 'Verifying Matrix\n'
   if (n != m):
     print 'Matrix must be symmetric to converge\n'
@@ -45,10 +46,9 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
   else:
     print 'Check escaped\n'
   
-  mamask   = np.zeros(n)
-  mamask[mask] = 1
-  e        = np.ma.masked_array(np.ones((n,1)),mamask)
-  res      = np.ma.masked_array(np.empty((n,1)),mamask)
+  e        = np.ones((n,1))
+  e[mask]  = 0
+  #res      = np.empty((n,1))
   
   g        = 0.9
   etamax   = 0.1
@@ -59,17 +59,15 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
   if largemem:
     v      = x * chunking_dot(A,x,chunk_size=chunk_size)
   else:
-    v      = x*np.ma.dot(A,x)
+    v      = x*np.dot(A,x)
   rk       = 1 - v
-  rho_km1  = np.ma.dot(np.transpose(rk),rk)
+  rk[mask] = 0
+  rho_km1  = np.dot(np.transpose(rk),rk)
   rout     = rho_km1
   rold     = rout
   
   MVP = 0 #matrix vector products
   i = 0
-  #log_file = open("KRlog.log","a")
-  #log_file.write("N= %d\n" % n)
-  #log_file.close
   
   while rout > rt:
     i = i+1
@@ -80,9 +78,11 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
     while rho_km1 > innertol: #inner iteration by CG
       k = k+1
       if k==1:
-        Z       = rk/v
+        with np.errstate(invalid='ignore'):
+          Z       = rk/v
+        Z[mask] = 0
         p       = Z
-        rho_km1 = np.ma.dot(np.transpose(rk),Z)
+        rho_km1 = np.dot(np.transpose(rk),Z)
       else:
         beta = rho_km1/rho_km2
         p    =  Z + beta*p
@@ -91,14 +91,14 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
       if largemem:
         w   = x*chunking_dot(A,x*p,chunk_size=chunk_size) + v*p
       else:
-        w   = x*np.ma.dot(A,x*p) + v*p
+        w   = x*np.dot(A,x*p) + v*p
       
-      alpha = rho_km1/np.ma.dot(np.transpose(p),w)
+      alpha = rho_km1/np.dot(np.transpose(p),w)
       ap = alpha*p
       
       #test distance to boundary of cone
       ynew = y + ap
-      if min(ynew) <= delta_lower:
+      if min(np.delete(ynew,mask)) <= delta_lower:
         if delta_lower == 0:
           break
         else:
@@ -115,18 +115,20 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
       y       = ynew
       rk      = rk - alpha*w
       rho_km2 = rho_km1
-      Z       = rk/v
+      with np.errstate(invalid='ignore'):
+        Z       = rk/v
       Z[mask] = 0
-      rho_km1 = np.ma.dot(np.transpose(rk),Z)
+      rho_km1 = np.dot(np.transpose(rk),Z)
     #end inner iteration
     
     x        = x*y
     if largemem:
       v      = x * chunking_dot(A,x,chunk_size=chunk_size)
     else:
-      v      = x*np.ma.dot(A,x)
+      v      = x*np.dot(A,x)
     rk       = 1-v
-    rho_km1  = np.ma.dot(np.transpose(rk),rk)
+    rk[mask] = 0
+    rho_km1  = np.dot(np.transpose(rk),rk)
     rout     = rho_km1
     MVP      = MVP + k + 1
     #print MVP,res
@@ -149,8 +151,8 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
   #end outer
   
   print 'Matrix vector products = %6d\n' % MVP
-  x = np.array(x)
-  x[mask] = 0
+  #x = np.array(x)
+  #x[mask] = 0
   return x
 
 
