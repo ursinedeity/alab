@@ -165,6 +165,7 @@ def ultracorrectSymmetricWithVector(x,v = None,M=None,diag = -1,
   totalBias = np.ones(len(x),float)    
   if v == None: v = np.zeros(len(x),float)  #single-sided reads    
   x = np.array(x,np.double,order = 'C')
+  _x = x
   v = np.array(v,float,order = "C")        
   N = len(x)       
   for iternum in xrange(M):         
