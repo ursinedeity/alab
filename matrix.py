@@ -92,7 +92,7 @@ class contactmatrix(object):
     #self.matrix = np.insert(self.matrix,self.mask,0,axis=1)
   #===================================================
   def krnorm(self,mask = None,**kwargs):
-    from alab.krnorm import bnewt
+    from alab.norm import bnewt
     self._getMask(mask)
     x = bnewt(self.matrix,mask=self.mask,check=0,**kwargs)*100
     self.matrix *= x 
