@@ -18,12 +18,12 @@ def ultracorrectSymmetricWithVector(x,v = None,M=None,diag = -1,
   By default does iterative correction, but can perform an M-time correction"""
   if M == None:
     M = 599
-  totalBias = np.ones(len(x),float)    
-  if v == None: v = np.zeros(len(x),float)  #single-sided reads    
-  x = np.array(x,np.double,order = 'C')
-  cdef np.ndarray[np.double_t, ndim = 2] _x = x
-  cdef np.ndarray[np.double_t, ndim = 1] s 
-  v = np.array(v,float,order = "C")        
+  totalBias = np.ones(len(x),np.float32)    
+  if v == None: v = np.zeros(len(x),np.float32)  #single-sided reads    
+  #x = np.array(x,np.double,order = 'C')
+  cdef np.ndarray[np.float32_t, ndim = 2] _x = x
+  cdef np.ndarray[np.float32_t, ndim = 1] s 
+  v = np.array(v,np.float32,order = "C")        
   cdef int i , j, N
   N = len(x)       
   for iternum in xrange(M):         
@@ -56,7 +56,7 @@ def ultracorrectSymmetricWithVector(x,v = None,M=None,diag = -1,
         break
 
                          
-  corr = totalBias[s0!=0].mean()  #mean correction factor
-  x  = x * corr * corr #renormalizing everything
-  totalBias /= corr
-  return x, v/totalBias, totalBias
+  #corr = totalBias[s0!=0].mean()  #mean correction factor
+  #x  = x * corr * corr #renormalizing everything
+  #totalBias /= corr
+  return _x

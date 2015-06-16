@@ -112,8 +112,17 @@ class contactmatrix(object):
       self.matrix *= rowsum 
       self.matrix *= rowsum.T
       
-  def icenorm(self, **kwargs):
-    self.vcnorm(iterations=10, **kwargs)
+  #def icenorm(self, **kwargs):
+    #self.vcnorm(iterations=10, **kwargs)
+  def icenorm(self,mask = None):
+    from alab.numutils import ultracorrectSymmetricWithVector
+    if mask is None:
+      self._getMask(mask)
+    else:
+      self.matrix[mask,:]=0
+      self.matrix[:,mask]=0
+    
+    self.matrix = ultracorrectSymmetricWithVector(self.matrix)
   
   def removeDiagonal(self):
     np.fill_diagonal(self.matrix,0)
