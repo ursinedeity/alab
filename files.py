@@ -221,7 +221,7 @@ class bedgraph(object):
     return np.core.records.fromrecords(filterList,dtype=self.bedgraphdtype)
       
   #========================================================
-  def save(self,filename,bedtype='bedgraph',tyle='%.8f'):
+  def save(self,filename,bedtype='bedgraph',style='%.8f'):
     """save bed file
     can be bedgraph,bedgraph with flag,bed
     """
