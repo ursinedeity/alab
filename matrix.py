@@ -161,22 +161,28 @@ class contactmatrix(object):
   def plot(self,figurename,**kwargs):
     plotmatrix(figurename,np.log(self.matrix),**kwargs)
   
-  def plotZeroCount(self,figurename):
-    import matplotlib.pyplot as plt
+  def plotZeroCount(self,figurename,**kwargs):
     zeroCount = []
     for i in range(len(self.matrix)):
       zeros = len(np.flatnonzero(self.matrix[i] == 0))
       if zeros != len(self.matrix):
         zeroCount.append(zeros)
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.hist(zeroCount,int(len(self.matrix)/100))
-    ax.set_xlabel('# of Zeros')
-    ax.set_ylabel('Frequency')
-    plt.show()
-    fig.savefig(figurename,dpi=600)
-    plt.close(fig)
+    #--endfor
+    histogram(figurename,
+              zeroCount,
+              int(len(self.matrix)/100),
+              xlab = '# of Zeros', ylab = 'Frequency',
+              **kwargs)
+    
+    
+  def plotSum(self,figurename,**kwargs):
+    rowsum = self.rowsum()
+    histogram(figurename,
+              rowsum[rowsum > 0],
+              int(len(self.matrix)/100),
+              xlab = 'Row sums', ylab = 'Frequency',
+              **kwargs)
+    
   #==============================================================save method
   def save(self, filename, mod = 'hdf5', precision=3):
     if mod == 'npz':
@@ -189,6 +195,39 @@ class contactmatrix(object):
       h5f.close()
 #------------------------------------------------------------------------------------------
 
+def histogram(figurename, x, binNum, xlab=None, ylab=None, title=None, **kwargs):
+  """Plot a frequency histogram with a given array x
+  
+  Parameters
+  ----------
+  x  : a 1-D vector
+    Raw data
+  binNum : int
+    Number of bins to draw
+  xlab : string, optional
+    label for x axis
+  ylab : string, optional
+    label for y axis
+  title : string, optional
+    title of the figure
+    
+  """
+  import matplotlib.pyplot as plt
+  
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  ax.hist(x,binNum,**kwargs)
+  if xlab != None:
+    ax.set_xlabel(xlab)
+  if ylab != None:
+    ax.set_ylabel(ylab)
+  if title != None:
+    ax.title(title)
+  
+  plt.show()
+  fig.savefig(figurename,dpi=600)
+  plt.close(fig)
+  
 def plotmatrix(figurename,matrix,format='png',title=None,**kwargs):
   """Plot a 2D array with a colorbar.
   
