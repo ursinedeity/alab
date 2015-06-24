@@ -55,11 +55,7 @@ class contactmatrix(object):
     return self.matrix.__repr__()
   def __len__(self):
     return self.matrix.__len__()
-  #def __del__(self):
-    #try:
-      #self.h5f.close()
-    #except:
-      #pass
+
   def rowsum(self):
     return self.matrix.sum(axis=1)
   def columnsum(self):
@@ -79,25 +75,22 @@ class contactmatrix(object):
       else:
         raise TypeError, "Invalid argument type, numpy.ndarray is required"
 
-  #def _removeZeroEntry(self,maskGiven = 0):
-    #if maskGiven == 0:
-      #self._getZeroEntry()
-    #self.matrix = np.delete(self.matrix,self.mask,0)
-    #self.matrix = np.delete(self.matrix,self.mask,1)
-    
-  #def _expandZeroEntry(self):
-    #for i in range(len(self.mask)):
-      #self.mask[i] -= i
-    #self.matrix = np.insert(self.matrix,self.mask,0,axis=0)
-    #self.matrix = np.insert(self.matrix,self.mask,0,axis=1)
-  #===================================================
+  #========================================================normalization methods
   def krnorm(self,mask = None,**kwargs):
+    """using krnorm balacing the matrix (overwriting the matrix!)
+          
+          mask is a 1-D vector with the same length as the matrix where 1s specify the row/column to be ignored
+          if no mask is given, row/column with rowsum==0 will be automatically detected and ignored
+        
+          when large_mem is set to 1, matrix product is calculated using small chunks, 
+          but this will slowdown the process a little bit.     
+    """
     from alab.norm import bnewt
     self._getMask(mask)
     x = bnewt(self.matrix,mask=self.mask,check=0,**kwargs)*100
     self.matrix *= x 
     self.matrix *= x.T
-  #====================================================
+
   def vcnorm(self,iterations=1,mask = None):
     self._getMask(mask)
     for i in range(iterations):
@@ -112,8 +105,6 @@ class contactmatrix(object):
       self.matrix *= rowsum 
       self.matrix *= rowsum.T
       
-  #def icenorm(self, **kwargs):
-    #self.vcnorm(iterations=10, **kwargs)
   def icenorm(self,mask = None):
     from alab.numutils import ultracorrectSymmetricWithVector
     if mask is None:
@@ -123,29 +114,70 @@ class contactmatrix(object):
       self.matrix[:,mask]=0
     
     self.matrix = ultracorrectSymmetricWithVector(self.matrix)
-  
+  #-----------------------------------------------------------------------------
   def removeDiagonal(self):
     np.fill_diagonal(self.matrix,0)
+  
+  def removePoorRegions(self, cutoff=1):
+    """Removes "cutoff" percent of bins with least counts
+
+    Parameters
+    ----------
+      cutoff : int, 0<cutoff<100
+        Percent of lowest-counts bins to be removed
+    """
+    rowsum   = self.rowsum()
+    mask     = np.flatnonzero(rowsum < np.percentile(rowsum[rowsum > 0],cutoff))
+    self.matrix[mask,:] = 0
+    self.matrix[:,mask] = 0
+    
     
   def scale(self, cellaverage = 1):
+    """
+      Scale matrix so that average of cells is the given value. 
+      By default, the rowsum will be the number of rows/columns
+    """
     rowsum = self.rowsum()
     totalsum = rowsum.sum()
     self.matrix = self.matrix / totalsum * (cellaverage * (len(rowsum)-len(self.mask)) * (len(rowsum)-len(self.mask)))
   
   def range(self,chrom):
+    """
+      return the index range for a give chromsome
+    """
     rangeList = np.flatnonzero(self.idx['chrom'] == chrom)
     return (rangeList[0],rangeList[-1])
   
   def makeIntraMatrix(self,chrom):
+    """substract a chromsome matrix given a chromsome name
+    chrom : str, chromosome name e.g 'chr1'
+    """
     rstart,rend = self.range(chrom)
     submatrix   = contactmatrix(rend - rstart + 1)
     submatrix.matrix = self.matrix[rstart:rend+1,rstart:rend+1]
     submatrix.idx    = np.core.records.fromrecords(self.idx[rstart:rend+1],dtype=self.idxdtype)
     return submatrix
-  #====================================================
+  #==============================================================plotting methods
   def plot(self,figurename,**kwargs):
     plotmatrix(figurename,np.log(self.matrix),**kwargs)
-  #====================================================
+  
+  def plotZeroCount(self,figurename):
+    import matplotlib.pyplot as plt
+    zeroCount = []
+    for i in range(len(self.matrix)):
+      zeros = len(np.flatnonzero(self.matrix[i] == 0))
+      if zeros != len(self.matrix):
+        zeroCount.append(zeros)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.hist(zeroCount,int(len(self.matrix)/100))
+    ax.set_xlabel('# of Zeros')
+    ax.set_ylabel('Frequency')
+    plt.show()
+    fig.savefig(figurename,dpi=600)
+    plt.close(fig)
+  #==============================================================save method
   def save(self, filename, mod = 'hdf5', precision=3):
     if mod == 'npz':
       np.savez_compressed(filename,matrix=self.matrix,idx=self.idx)
@@ -155,7 +187,8 @@ class contactmatrix(object):
       h5f.create_dataset('matrix', data=self.matrix, compression = 'gzip', compression_opts=9)
       h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
       h5f.close()
-      
+#------------------------------------------------------------------------------------------
+
 def plotmatrix(figurename,matrix,format='png',title=None,**kwargs):
   """Plot a 2D array with a colorbar.
   
@@ -216,4 +249,4 @@ def plotmatrix(figurename,matrix,format='png',title=None,**kwargs):
     pp.close()
   
   plt.close(fig)
-#===================================================
+#--------------------------------------------------------------------
