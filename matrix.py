@@ -289,3 +289,44 @@ def plotmatrix(figurename,matrix,format='png',title=None,**kwargs):
   
   plt.close(fig)
 #--------------------------------------------------------------------
+def compareMatrix(m1,m2,figurename = 'comparison.png',**kwargs):
+  """compare 2 matrixes, output correlation coefficient
+  
+  Parameters
+  ----------
+    m1,m2 : contactmatrix instances
+      must be the same dimensions
+    figurename : str
+      filename for columnwise pearson corr histogram, set None to escape this step
+  """
+  if not (isinstance(m1,contactmatrix) and isinstance(m2,contactmatrix)):
+    raise TypeError, "Invalid argument type, 2 contactmatrixes are required"
+  if len(m1) != len(m2):
+    raise TypeError, "Invalid argument, dimensions of matrixes must meet"
+  from scipy.stats import spearmanr,pearsonr
+  
+  flat1 = m1.matrix.flatten()
+  flat2 = m2.matrix.flatten()
+  nonzeros = (flat1 > 0) * (flat2 > 0)
+  flat1 = flat1[nonzeros]
+  flat2 = flat2[nonzeros]
+  print 'pearsonr:'
+  print pearsonr(flat1,flat2)
+  print 'spearmanr:'
+  print spearmanr(flat1,flat2)
+  del flat1
+  del flat2
+  if not (figurename is None):
+    corr = []
+    for i in range(len(m1)):
+      r = pearsonr(m1.matrix[i],m2.matrix[i])
+      #print r
+      if not np.isnan(r[0]):
+        corr.append(r[0])
+      
+    histogram(figurename,
+              corr,
+              100,
+              xlab = 'Correlation Coefficient', ylab = 'Frequency',
+              **kwargs)
+#----------------------------------------------------------------------
