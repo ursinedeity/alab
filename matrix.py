@@ -203,7 +203,7 @@ class contactmatrix(object):
       h5f = h5py.File(filename, 'w')
       h5f.create_dataset('matrix', data=self.matrix, compression = 'gzip', compression_opts=9)
       h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
-      try 
+      try:
         self.genome
         self.resolution
       except NameError:
