@@ -10,7 +10,7 @@ matplotlib.use('Agg')
 
 class contactmatrix(object):
   idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int)])
-  def __init__(self,filename,idx=None):
+  def __init__(self,filename,genome=None,resolution=None):
     if isinstance(filename,int):
       self.matrix=np.zeros((filename,filename),dtype = np.float32)
     elif isinstance(filename,str):
@@ -24,6 +24,10 @@ class contactmatrix(object):
         h5f = h5py.File(filename,'r')
         self.matrix = h5f['matrix'][:]
         self.idx    = h5f['idx'][:]
+        if 'genome' in h5f.keys() and 'resolution' in h5f.keys():
+          import cPickle
+          self.genome     = cPickle.loads(h5f['genome'].value)
+          self.resolution = cPickle.loads(h5f['resolution'].value)
         h5f.close()
       else:
         from alab.io import loadstream
@@ -43,7 +47,14 @@ class contactmatrix(object):
           self.matrix[i] = line[3:]
         f.close()
         self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self.idxdtype)
-
+    #----------------end filename
+    if isinstance(genome,str) and isinstance(resolution,int):
+      import alab.utils
+      genomedb    = alab.utils.genome(genome,usechr=['#','X'])
+      bininfo     = genomedb.bininfo(resolution)
+      self.genome = genome
+      self.resolution = resolution
+      self.buildindex(bininfo.chromList,bininfo.startList,bininfo.endList)
   #==================================================
   def buildindex(self,chromlist,startlist,endlist):
     idxlist = np.column_stack([chromlist,startlist,endlist])
@@ -192,6 +203,14 @@ class contactmatrix(object):
       h5f = h5py.File(filename, 'w')
       h5f.create_dataset('matrix', data=self.matrix, compression = 'gzip', compression_opts=9)
       h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
+      try 
+        self.genome
+        self.resolution
+      except NameError:
+        pass
+      else:
+        h5f.create_dataset('genome',data = cPickle.dumps(self.genome))
+        h5f.create_dataset('resolution',data = cPickle.dumps(self.resolution))
       h5f.close()
 #------------------------------------------------------------------------------------------
 
@@ -330,3 +349,14 @@ def compareMatrix(m1,m2,figurename = 'comparison.png',**kwargs):
               xlab = 'Correlation Coefficient', ylab = 'Frequency',
               **kwargs)
 #----------------------------------------------------------------------
+def loadh5dict(filename):
+  import cPickle
+  import h5py
+  h5f    = h5py.File(filename,'r')
+  genome           = cPickle.loads(h5f['genome'].value)
+  resolution       = cPickle.loads(h5f['resolution'].value)
+  #genomeIdxToLabel = cPickle.loads(h5f['genomeIdxToLabel'].value)
+  binNumber        = cPickle.loads(h5f['binNumber'].value)
+  newMatrix = contactmatrix(binNumber,genome,resolution)
+  newMatrix.matrix[:] = h5f['heatmap'][:]
+  return newMatrix
