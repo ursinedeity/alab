@@ -58,4 +58,7 @@ class genome(object):
     else:
       return findidx[0]
   
+  def getchrom(self,chromNum):
+    assert isinstance(chromNum,int)
+    return self.info['chrom'][chromNum]
   
