@@ -5,12 +5,16 @@ __author__ = 'N.H.'
 import numpy as np
 import os.path
 import re
+import h5py
+import cPickle
 import matplotlib
+import warnings
 matplotlib.use('Agg')
 
 class contactmatrix(object):
   idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int)])
   def __init__(self,filename,genome=None,resolution=None):
+    self.__applyedMethods = {}
     if isinstance(filename,int):
       self.matrix=np.zeros((filename,filename),dtype = np.float32)
     elif isinstance(filename,str):
@@ -20,12 +24,13 @@ class contactmatrix(object):
         self.matrix = np.load(filename)['matrix']
         self.idx    = np.load(filename)['idx']
       elif os.path.splitext(filename)[1] == '.hdf5':
-        import h5py
         h5f = h5py.File(filename,'r')
         self.matrix = h5f['matrix'][:]
         self.idx    = h5f['idx'][:]
-        if 'genome' in h5f.keys() and 'resolution' in h5f.keys():
-          import cPickle
+        if 'applyedMethods' in h5f.keys():
+          self.__applyedMethods = cPickle.loads(h5f['applyedMethods'].value)
+        
+        if 'genome' in h5f.keys() and 'resolution' in h5f.keys():         
           self.genome     = cPickle.loads(h5f['genome'].value)
           self.resolution = cPickle.loads(h5f['resolution'].value)
         h5f.close()
@@ -71,6 +76,11 @@ class contactmatrix(object):
     return self.matrix.sum(axis=1)
   def columnsum(self):
     return self.matrix.sum(axis=0)
+  def applyed(self,method):
+    if method in self.__applyedMethods:
+      return True
+    else:
+      return False
   
   def _getZeroEntry(self):
     self.mask   = np.flatnonzero(self.rowsum() == 0)
@@ -87,7 +97,7 @@ class contactmatrix(object):
         raise TypeError, "Invalid argument type, numpy.ndarray is required"
 
   #========================================================normalization methods
-  def krnorm(self,mask = None,**kwargs):
+  def krnorm(self,mask = None,force=False,**kwargs):
     """using krnorm balacing the matrix (overwriting the matrix!)
           
           mask is a 1-D vector with the same length as the matrix where 1s specify the row/column to be ignored
@@ -96,40 +106,57 @@ class contactmatrix(object):
           when large_mem is set to 1, matrix product is calculated using small chunks, 
           but this will slowdown the process a little bit.     
     """
-    from alab.norm import bnewt
-    self._getMask(mask)
-    x = bnewt(self.matrix,mask=self.mask,check=0,**kwargs)*100
-    self.matrix *= x 
-    self.matrix *= x.T
-
-  def vcnorm(self,iterations=1,mask = None):
-    self._getMask(mask)
-    for i in range(iterations):
-      print "\tIterations:",i+1
-      rowsum   = self.rowsum()
-      rowsum[self.mask] = 0
-      totalsum = rowsum.sum()
-      np.seterr(divide='ignore')
-      rowsum   = 1/rowsum
-      rowsum[self.mask] = 0
-      self.matrix *= totalsum
-      self.matrix *= rowsum 
-      self.matrix *= rowsum.T
-      
-  def icenorm(self,mask = None):
-    from alab.numutils import ultracorrectSymmetricWithVector
-    if mask is None:
+    if (not self.applyed('normalization')) or force:
+      from alab.norm import bnewt
       self._getMask(mask)
+      x = bnewt(self.matrix,mask=self.mask,check=0,**kwargs)*100
+      self.matrix *= x 
+      self.matrix *= x.T
+      self.__applyedMethods['normalization'] = 'krnorm'
     else:
-      self.matrix[mask,:]=0
-      self.matrix[:,mask]=0
-    
-    self.matrix = ultracorrectSymmetricWithVector(self.matrix)
+      warnings.warn("Method %s was done before, use force = True to overwrite it." % (self.__applyedMethods['normalization']))
+
+  def vcnorm(self,iterations=1,mask = None,force=False):
+    if (not self.applyed('normalization')) or force:
+      self._getMask(mask)
+      for i in range(iterations):
+        print "\tIterations:",i+1
+        rowsum   = self.rowsum()
+        rowsum[self.mask] = 0
+        totalsum = rowsum.sum()
+        np.seterr(divide='ignore')
+        rowsum   = 1/rowsum
+        rowsum[self.mask] = 0
+        self.matrix *= totalsum
+        self.matrix *= rowsum 
+        self.matrix *= rowsum.T
+      self.__applyedMethods['normalization'] = 'vcnorm'
+    else:
+      warnings.warn("Method %s was done before, use force = True to overwrite it." % (self.__applyedMethods['normalization']))
+      
+  def icenorm(self,mask = None,force=False):
+    if (not self.applyed('normalization')) or force:
+      from alab.numutils import ultracorrectSymmetricWithVector
+      if mask is None:
+        self._getMask(mask)
+      else:
+        self.matrix[mask,:]=0
+        self.matrix[:,mask]=0
+      
+      self.matrix = ultracorrectSymmetricWithVector(self.matrix)
+      self.__applyedMethods['normalization'] = 'icenorm'
+    else:
+      warnings.warn("Method %s was done before, use force = True to overwrite it." % (self.__applyedMethods['normalization']))
+      
   #-----------------------------------------------------------------------------
-  def removeDiagonal(self):
-    np.fill_diagonal(self.matrix,0)
-  
-  def removePoorRegions(self, cutoff=1):
+  def removeDiagonal(self,force = False):
+    if (not self.applyed('removeDiagonal')) or force:
+      np.fill_diagonal(self.matrix,0)
+      self.__applyedMethods['removeDiagonal'] = True
+    else:
+      warnings.warn("Method removeDiagonal was done before, use force = True to overwrite it.")
+      
+  def removePoorRegions(self, cutoff=1, force = False):
     """Removes "cutoff" percent of bins with least counts
 
     Parameters
@@ -137,12 +164,15 @@ class contactmatrix(object):
       cutoff : int, 0<cutoff<100
         Percent of lowest-counts bins to be removed
     """
-    rowsum   = self.rowsum()
-    mask     = np.flatnonzero(rowsum < np.percentile(rowsum[rowsum > 0],cutoff))
-    self.matrix[mask,:] = 0
-    self.matrix[:,mask] = 0
-    
-    
+    if (not self.applyed('removePoorRegions')) or force:
+      rowsum   = self.rowsum()
+      mask     = np.flatnonzero(rowsum < np.percentile(rowsum[rowsum > 0],cutoff))
+      self.matrix[mask,:] = 0
+      self.matrix[:,mask] = 0
+      self.__applyedMethods['removePoorRegions'] = True
+    else:
+      warnings.warn("Method removePoorRegions was done before, use force = True to overwrite it.")
+      
   def scale(self, cellaverage = 1):
     """
       Scale matrix so that average of cells is the given value. 
@@ -150,6 +180,10 @@ class contactmatrix(object):
     """
     rowsum = self.rowsum()
     totalsum = rowsum.sum()
+    try:
+      self.mask
+    except AttributeError:
+      self._getMask()
     self.matrix = self.matrix / totalsum * (cellaverage * (len(rowsum)-len(self.mask)) * (len(rowsum)-len(self.mask)))
   
   def range(self,chrom):
@@ -169,8 +203,27 @@ class contactmatrix(object):
     submatrix.idx    = np.core.records.fromrecords(self.idx[rstart:rend+1],dtype=self.idxdtype)
     return submatrix
   #==============================================================plotting methods
-  def plot(self,figurename,**kwargs):
-    plotmatrix(figurename,np.log(self.matrix),**kwargs)
+  def plot(self,figurename,log=True,**kwargs):
+    """
+    plot the matrix heat map
+    Parameters:
+    -----------
+    figurename : str
+    log: bool
+      if True, plot the log scale of the matrix
+      if False, plot the original matrix
+    clip_max:
+    clip_min:
+      2 options that will clip the matrix to certain value
+    cmap:
+      color map of the matrix
+    label:
+      label of the figure
+    """
+    if log:
+      plotmatrix(figurename,np.log(self.matrix),**kwargs)
+    else:
+      plotmatrix(figurename,self.matrix,**kwargs)
   
   def plotZeroCount(self,figurename,**kwargs):
     zeroCount = []
@@ -186,35 +239,51 @@ class contactmatrix(object):
               **kwargs)
     
     
-  def plotSum(self,figurename,**kwargs):
+  def plotSum(self,figurename,outlier=False,line=None,**kwargs):
+    """
+    Print the rowsum frequency histogram
+    
+    Parameters:
+    -----------
+    figurename: string
+      Name of the plot
+    outlier: bool
+      option to select plotting the outlier line, only functioning if 'line' parameter is set to None
+    line: float/array/list
+      draw vertical lines at a list of positions 
+    """
     rowsum = self.rowsum()
+    if line is None:
+      if outlier:
+        line = (np.percentile(rowsum,75) - np.percentile(rowsum,25))*1.5 + np.percentile(rowsum,75)
+      
     histogram(figurename,
               rowsum[rowsum > 0],
               int(len(self.matrix)/100),
               xlab = 'Row sums', ylab = 'Frequency',
+              line = line,
               **kwargs)
     
   #==============================================================save method
   def save(self, filename, mod = 'hdf5', precision=3):
-    if mod == 'npz':
-      np.savez_compressed(filename,matrix=self.matrix,idx=self.idx)
-    elif mod == 'hdf5':
-      import h5py
-      h5f = h5py.File(filename, 'w')
-      h5f.create_dataset('matrix', data=self.matrix, compression = 'gzip', compression_opts=9)
-      h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
-      try:
-        self.genome
-        self.resolution
-      except NameError:
-        pass
-      else:
-        h5f.create_dataset('genome',data = cPickle.dumps(self.genome))
-        h5f.create_dataset('resolution',data = cPickle.dumps(self.resolution))
-      h5f.close()
+    if (filename[-5:] != '.hdf5'):
+      filename += '.hdf5'
+    h5f = h5py.File(filename, 'w')
+    h5f.create_dataset('matrix', data=self.matrix, compression = 'gzip', compression_opts=9)
+    h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
+    h5f.create_dataset('applyedMethods', data=cPickle.dumps(self.__applyedMethods))
+    try:
+      self.genome
+      self.resolution
+    except AttributeError:
+      warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
+    else:
+      h5f.create_dataset('genome',data = cPickle.dumps(self.genome))
+      h5f.create_dataset('resolution',data = cPickle.dumps(self.resolution))
+    h5f.close()
 #------------------------------------------------------------------------------------------
 
-def histogram(figurename, x, binNum, xlab=None, ylab=None, title=None, **kwargs):
+def histogram(figurename, x, binNum, xlab=None, ylab=None, title=None, line=None, **kwargs):
   """Plot a frequency histogram with a given array x
   
   Parameters
@@ -229,7 +298,8 @@ def histogram(figurename, x, binNum, xlab=None, ylab=None, title=None, **kwargs)
     label for y axis
   title : string, optional
     title of the figure
-    
+  line  : float or array, optional
+    draw a vertical line at certain position(s)
   """
   import matplotlib.pyplot as plt
   
@@ -243,6 +313,9 @@ def histogram(figurename, x, binNum, xlab=None, ylab=None, title=None, **kwargs)
   if title != None:
     ax.title(title)
   
+  if line != None:
+    for l in np.array([line]).flatten():
+      ax.axvline(l, color='c', linestyle='dashed', linewidth=2)
   plt.show()
   fig.savefig(figurename,dpi=600)
   plt.close(fig)
@@ -350,8 +423,6 @@ def compareMatrix(m1,m2,figurename = 'comparison.png',**kwargs):
               **kwargs)
 #----------------------------------------------------------------------
 def loadh5dict(filename):
-  import cPickle
-  import h5py
   h5f    = h5py.File(filename,'r')
   genome           = cPickle.loads(h5f['genome'].value)
   resolution       = cPickle.loads(h5f['resolution'].value)
