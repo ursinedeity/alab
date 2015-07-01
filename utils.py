@@ -8,18 +8,7 @@ import numpy as np
 from collections import namedtuple
 from alab.io import loadstream
 
-def genchrnum(chrom):
-  """ Sort by chromosome """
-  if chrom:
-    num = chrom[3:]
-    if   num == 'X': num = 23
-    elif num == 'Y': num = 24
-    elif num == 'M': num = 25
-    else: num = int(num)
-  else:
-    num = 0
-  return num
-
+#===========================================================================
 class genome(object):
   def __init__(self,genomeName,usechr=['#','X']):
     datafile = os.environ['GENOMES'] + '/' + genomeName + '.info'
@@ -61,4 +50,15 @@ class genome(object):
   def getchrom(self,chromNum):
     assert isinstance(chromNum,int)
     return self.info['chrom'][chromNum]
-  
+
+def listadd(a,b):
+  """
+    Add 2 array/list that have different sizes
+  """
+  if len(a) < len(b):
+    c = np.array(b).copy()
+    c[:len(a)] += a
+  else:
+    c = np.array(a).copy()
+    c[:len(b)] += b
+  return c
