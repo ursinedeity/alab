@@ -60,3 +60,43 @@ def ultracorrectSymmetricWithVector(x,v = None,M=None,diag = -1,
   #x  = x * corr * corr #renormalizing everything
   #totalBias /= corr
   return _x
+
+#=====================================================================
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+@cython.nonecheck(False)
+def diagnorm(A,countzero = False,norm = True):
+  """ This function is to diagnol normalize matrix, 
+      countzero defines if we want to count zero values when calculate diagnol mean or not
+  """
+  cdef int i,j,N,offset
+  N = len(A)
+  cdef np.ndarray[np.float32_t, ndim = 2] _A = A
+  cdef np.ndarray[np.float32_t, ndim = 1] diagMean  = np.empty(N,np.float32)
+  cdef np.ndarray[np.float32_t, ndim = 1] diagSum   = np.empty(N,np.float32)
+  cdef np.ndarray[np.float32_t, ndim = 1] diagCount = np.empty(N,np.float32)
+  for offset in range(N):
+    diag = np.diagonal(_A,offset)
+    if countzero:
+      diagSum[offset]   = diag.sum()
+      diagMean[offset]  = diag.mean()
+      diagCount[offset] = len(diag)
+    else:
+      mask = np.flatnonzero(diag)
+      if len(diag[mask]) == 0:
+        diagSum[offset]   = 0
+        diagMean[offset]  = 0
+        diagCount[offset] = 0
+      else:
+        diagMean[offset]  = diag[mask].mean()
+        diagSum[offset]   = diag[mask].sum()
+        diagCount[offset] = len(diag[mask])
+  if norm:
+    for i in range(N):
+      for j in range(N):
+        offset = abs(i-j)
+        if diagMean[offset] != 0:
+          _A[i,j] = _A[i,j] / diagMean[offset]
+  
+  return _A,diagMean,diagSum,diagCount

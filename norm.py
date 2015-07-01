@@ -161,29 +161,38 @@ ultracorrectSymmetricWithVector = \
   numutils.ultracorrectSymmetricWithVector  # @UndefinedVariable @IgnorePep8
 #==========================================================================
 
+diagnorm = numutils.diagnorm
 
-#def krnorm(A,tol=1e-6):
-  ## this is an implimentation of bnewt with non-symmetric matrix
-  ## matrix must be square to convergence
+def diagnorm_old(A,countzero = False):
+  """ This function is to diagnol normalize matrix, 
+      countzero defines if we want to count zero values when calculate diagnol mean or not
+  """
+  diagMean = np.zeros(len(A))
+  diagSum  = np.zeros(len(A))
   
-  #(n,m) = A.shape
-  #if (n != m):
-    #print 'Matrix must be square to converge!\n'
-    #return 'NaN'
-  #Zero_upper = np.zeros((n,n))
-  #Zero_lower = np.zeros((m,m))
-  #S = np.concatenate((np.concatenate((Zero_upper,A),axis=1),np.concatenate((A.T,Zero_lower),axis=1)))
-  ##S=np.concatenate((A.T,Zero_lower),axis=1)
-  ##print S
+  for offset in range(len(A)):
+    diag = np.diagonal(A,offset)
+    if countzero:
+      diagSum[offset]  = diag.sum()
+      diagMean[offset] = diag.mean()
+      
+    else:
+      mask = np.flatnonzero(diag)
+      if diag[mask].size==0:
+        diagSum[offset]  = 0
+        diagMean[offset] = 0
+      else:
+        diagMean[offset] = diag[mask].mean()
+        diagSum[offset]  = diag[mask].sum()
   
-  #x=bnewt(S)
+  for i in range(len(A)):
+    for j in range(len(A)):
+      offset = abs(i-j)
+      if diagMean[offset] != 0:
+        A[i][j] = A[i][j]/diagMean[offset]
   
-  #print x
-  #R = S * x * x.T
-  #Rc = R[0:n:1,m::1]
-  ##xc = x[m::1]
-  #return Rc
-  
+  return A,diagMean,diagSum
+        
 if __name__=='__main__':
   
   A = np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12],[100,200,300,400]])
