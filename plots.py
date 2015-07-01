@@ -43,6 +43,53 @@ def histogram(figurename, x, binNum, xlab=None, ylab=None, title=None, line=None
   plt.show()
   fig.savefig(figurename,dpi=600)
   plt.close(fig)
+
+def plotxy(figurename,x,y,format='png',xlab=None,ylab=None,title=None,xticklabels=None,yticklabels=None,vline=None, hline=None, **kwargs):
+  """xy plot
+  Parameters:
+  -----------
+  x,y: dataset used to plot
+  format: str
+    format to save figure
+  xlab/ylab : string, optional
+    label for x/y axis
+  title : string, optional
+    title of the figure
+  vline/hline: float or array, optional
+    draw a vertical/horizontal line at certain position(s)
+  xticks/yticks: ticks for x,y axis
+  """
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+  ax.plot(x,y,**kwargs)
+  
+  if xlab != None:
+    ax.set_xlabel(xlab)
+  if ylab != None:
+    ax.set_ylabel(ylab)
+  if title != None:
+    ax.title(title)
+  if xticklabels != None:
+    ax.set_xticklabels(xticklabels)
+  if yticklabels != None:
+    ax.set_yticklabels(yticklabels)
+    
+  if vline != None:
+    for l in np.array([vline]).flatten():
+      ax.axvline(l, color='c', linestyle='dashed', linewidth=1)
+  if hline != None:
+    for l in np.array([hline]).flatten():
+      ax.axhline(l, color='c', linestyle='dashed', linewidth=1)
+  plt.show()
+  if format == 'png':
+    fig.savefig(figurename,dpi=600)
+  elif format == 'pdf':
+    from matplotlib.backends.backend_pdf import PdfPages
+    pp = PdfPages(figurename)
+    pp.savefig(fig,dpi=600)
+    pp.close()
+  
+  plt.close(fig)
   
 def plotmatrix(figurename,matrix,format='png',title=None,**kwargs):
   """Plot a 2D array with a colorbar.
