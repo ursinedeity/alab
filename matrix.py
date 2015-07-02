@@ -13,7 +13,7 @@ import alab.utils
 
 class contactmatrix(object):
   idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int)])
-  def __init__(self,filename,genome=None,resolution=None):
+  def __init__(self,filename,genome=None,resolution=None,usechr=['#','X']):
     self._applyedMethods = {}
     if isinstance(filename,int):
       self.matrix=np.zeros((filename,filename),dtype = np.float32)
@@ -54,11 +54,12 @@ class contactmatrix(object):
         self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self.idxdtype)
     #----------------end filename
     if isinstance(genome,str) and isinstance(resolution,int):
-      genomedb    = alab.utils.genome(genome,usechr=['#','X'])
+      genomedb    = alab.utils.genome(genome,usechr=usechr)
       bininfo     = genomedb.bininfo(resolution)
       self.genome = genome
       self.resolution = resolution
       self._buildindex(bininfo.chromList,bininfo.startList,bininfo.endList)
+      
   #==================================================
   def _buildindex(self,chromlist,startlist,endlist):
     idxlist = np.column_stack([chromlist,startlist,endlist])
@@ -97,7 +98,65 @@ class contactmatrix(object):
         return 1
       else:
         raise TypeError, "Invalid argument type, numpy.ndarray is required"
+  #=========================================================filtering methods
+  def removeDiagonal(self,force = False):
+    if (not self.applyed('removeDiagonal')) or force:
+      np.fill_diagonal(self.matrix,0)
+      self._applyedMethods['removeDiagonal'] = True
+    else:
+      warnings.warn("Method removeDiagonal was done before, use force = True to overwrite it.")
+      
+  def removePoorRegions(self, cutoff=1, force = False):
+    """Removes "cutoff" percent of bins with least counts
 
+    Parameters
+    ----------
+      cutoff : int, 0<cutoff<100
+        Percent of lowest-counts bins to be removed
+    """
+    if (not self.applyed('removePoorRegions')) or force:
+      rowsum   = self.rowsum()
+      mask     = np.flatnonzero(rowsum < np.percentile(rowsum[rowsum > 0],cutoff))
+      self.matrix[mask,:] = 0
+      self.matrix[:,mask] = 0
+      self._applyedMethods['removePoorRegions'] = True
+    else:
+      warnings.warn("Method removePoorRegions was done before, use force = True to overwrite it.")
+      
+  def identifyInterOutliersCutoff(self,N=10):
+    if self.applyed('normalization'):
+      raise RuntimeError, "Matrix is already normalized, raw matrix is needed."
+    intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
+    interflatten = self.matrix[intermask]
+    interflatten = interflatten[interflatten > 0]
+    originHist = np.histogram(interflatten,interflatten.max())[0]
+    repeatResults = np.zeros((N,interflatten.max()),dtype=int)
+    for i in range(N):
+      tmpChoice = np.random.choice(interflatten,len(interflatten))
+      repeatResults[i] = alab.utils.listadd(repeatResults[i],np.histogram(tmpChoice,tmpChoice.max())[0])
+      
+    comparison = np.std(repeatResults,axis=0) >= originHist/2
+    i = len(comparison) -1
+    while (comparison[i] or comparison[i-1]):i -= 1
+    cutoff = i+1
+    return cutoff
+  
+  def smoothInterContactByCutoff(self,cutoff,w=3,s=3,p=3,force=False):
+    if (not self.applyed('smoothByCutoff')) or force:
+      intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
+      x, y = np.nonzero(intermask)
+      pos  = np.flatnonzero(self.matrix[intermask] > cutoff)
+      for i in pos:
+        cnew = alab.utils.powerLawSmooth(self.matrix[ x[i]-w:x[i]+w+1 , y[i]-w:y[i]+w+1 ],w,s,p)
+        print x[i],y[i],self.matrix[x[i],y[i]],'-->',cnew
+        self.matrix[x[i],y[i]] = cnew
+        self.matrix[y[i],x[i]] = cnew
+      self._applyedMethods['smoothByCutoff'] = cutoff
+    else:
+      warnings.warn("Method smoothInterContactByCutoff was done before,cutoff = %d use force = True to overwrite it."\
+                    %(self._applyedMethods['smoothByCutoff']))
+  
+  
   #========================================================normalization methods
   def krnorm(self,mask = None,force=False,**kwargs):
     """using krnorm balacing the matrix (overwriting the matrix!)
@@ -175,30 +234,7 @@ class contactmatrix(object):
       return self._applyedMethods['diagnorm'][0], self._applyedMethods['diagnorm'][1], self._applyedMethods['diagnorm'][2]
     
   #-----------------------------------------------------------------------------
-  def removeDiagonal(self,force = False):
-    if (not self.applyed('removeDiagonal')) or force:
-      np.fill_diagonal(self.matrix,0)
-      self._applyedMethods['removeDiagonal'] = True
-    else:
-      warnings.warn("Method removeDiagonal was done before, use force = True to overwrite it.")
-      
-  def removePoorRegions(self, cutoff=1, force = False):
-    """Removes "cutoff" percent of bins with least counts
-
-    Parameters
-    ----------
-      cutoff : int, 0<cutoff<100
-        Percent of lowest-counts bins to be removed
-    """
-    if (not self.applyed('removePoorRegions')) or force:
-      rowsum   = self.rowsum()
-      mask     = np.flatnonzero(rowsum < np.percentile(rowsum[rowsum > 0],cutoff))
-      self.matrix[mask,:] = 0
-      self.matrix[:,mask] = 0
-      self._applyedMethods['removePoorRegions'] = True
-    else:
-      warnings.warn("Method removePoorRegions was done before, use force = True to overwrite it.")
-      
+  
   def scale(self, cellaverage = 1):
     """
       Scale matrix so that average of cells is the given value. 
@@ -246,34 +282,8 @@ class contactmatrix(object):
     submatrix._applyedMethods['subMatrix'] = chrom
     return submatrix
   
-  def identifyInterOutliersCutoff(self,N=10):
-    if self.applyed('normalization'):
-      raise RuntimeError, "Matrix is already normalized, raw matrix is needed."
-    intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
-    interflatten = self.matrix[intermask]
-    interflatten = interflatten[interflatten > 0]
-    originHist = np.histogram(interflatten,interflatten.max())[0]
-    repeatResults = np.zeros((N,interflatten.max()),dtype=int)
-    for i in range(N):
-      tmpChoice = np.random.choice(interflatten,len(interflatten))
-      repeatResults[i] = alab.utils.listadd(repeatResults[i],np.histogram(tmpChoice,tmpChoice.max())[0])
-      
-    comparison = np.std(repeatResults,axis=0) >= originHist/2
-    i = len(comparison) -1
-    while (comparison[i] or comparison[i-1]):i -= 1
-    cutoff = i+1
-    return cutoff
   
-  def smoothInterContactByCutoff(self,cutoff,w=3,s=3,p=3):
-    intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
-    x, y = np.nonzero(intermask)
-    pos  = np.flatnonzero(self.matrix[intermask] > cutoff)
-    for i in pos:
-      cnew = alab.utils.powerLawSmooth(self.matrix[ x[i]-w:x[i]+w+1 , y[i]-w:y[i]+w+1 ],w,s,p)
-      print x[i],y[i],self.matrix[x[i],y[i]],cnew
-      self.matrix[x[i],y[i]] = cnew
-      self.matrix[y[i],x[i]] = cnew
-      
+  #==============================================================
   #==============================================================plotting methods
   def plot(self,figurename,log=True,**kwargs):
     """
