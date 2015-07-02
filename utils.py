@@ -62,3 +62,14 @@ def listadd(a,b):
     c = np.array(a).copy()
     c[:len(b)] += b
   return c
+
+def powerLawSmooth(matrix,w=3,s=3,p=3):
+  csum = 0.0
+  divider = 0.0
+  for i in range(-w,w+1):
+    for j in range(-w,w+1):
+      decay = 1 / (abs(s*i) ** p + abs(s*j) ** p + 1.0)
+      csum += matrix[w+i,w+j] * decay
+      divider += decay
+  
+  return csum/divider

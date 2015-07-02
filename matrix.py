@@ -9,6 +9,7 @@ import h5py
 import cPickle
 import warnings
 from alab.plots import plotxy, plotmatrix, histogram
+import alab.utils
 
 class contactmatrix(object):
   idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int)])
@@ -53,7 +54,6 @@ class contactmatrix(object):
         self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self.idxdtype)
     #----------------end filename
     if isinstance(genome,str) and isinstance(resolution,int):
-      import alab.utils
       genomedb    = alab.utils.genome(genome,usechr=['#','X'])
       bininfo     = genomedb.bininfo(resolution)
       self.genome = genome
@@ -245,6 +245,35 @@ class contactmatrix(object):
       submatrix.resolution = self.resolution
     submatrix._applyedMethods['subMatrix'] = chrom
     return submatrix
+  
+  def identifyInterOutliersCutoff(self,N=10):
+    if self.applyed('normalization'):
+      raise RuntimeError, "Matrix is already normalized, raw matrix is needed."
+    intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
+    interflatten = self.matrix[intermask]
+    interflatten = interflatten[interflatten > 0]
+    originHist = np.histogram(interflatten,interflatten.max())[0]
+    repeatResults = np.zeros((N,interflatten.max()),dtype=int)
+    for i in range(N):
+      tmpChoice = np.random.choice(interflatten,len(interflatten))
+      repeatResults[i] = alab.utils.listadd(repeatResults[i],np.histogram(tmpChoice,tmpChoice.max())[0])
+      
+    comparison = np.std(repeatResults,axis=0) >= originHist/2
+    i = len(comparison) -1
+    while (comparison[i] or comparison[i-1]):i -= 1
+    cutoff = i+1
+    return cutoff
+  
+  def smoothInterContactByCutoff(self,cutoff,w=3,s=3,p=3):
+    intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
+    x, y = np.nonzero(intermask)
+    pos  = np.flatnonzero(self.matrix[intermask] > cutoff)
+    for i in pos:
+      cnew = alab.utils.powerLawSmooth(self.matrix[ x[i]-w:x[i]+w+1 , y[i]-w:y[i]+w+1 ],w,s,p)
+      print x[i],y[i],self.matrix[x[i],y[i]],cnew
+      self.matrix[x[i],y[i]] = cnew
+      self.matrix[y[i],x[i]] = cnew
+      
   #==============================================================plotting methods
   def plot(self,figurename,log=True,**kwargs):
     """
