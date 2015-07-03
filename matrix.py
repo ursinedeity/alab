@@ -98,6 +98,18 @@ class contactmatrix(object):
         return 1
       else:
         raise TypeError, "Invalid argument type, numpy.ndarray is required"
+  
+  def __checkGenomeResolution(self,genome,resolution):
+    if hasattr(self,"genome") and hasattr(self,"resolution"):
+      pass
+    else:
+      warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
+      if (genome is None) or (resolution is None):
+        raise ValueError, "No genome info is found! Genome and resolution parameter must be specified."
+      else:
+        self.genome = genome
+        self.resolution = resolution
+    
   #=========================================================filtering methods
   def removeDiagonal(self,force = False):
     if (not self.applyed('removeDiagonal')) or force:
@@ -256,7 +268,7 @@ class contactmatrix(object):
     if len(rangeList)==0:
       raise ValueError, "%s is not found in the index" %(chrom)
     else:
-      return (rangeList[0],rangeList[-1])
+      return (rangeList[0],rangeList[-1]+1)
   
   def makeIntraMatrix(self,chrom):
     """substract a chromsome matrix given a chromsome name
@@ -268,22 +280,41 @@ class contactmatrix(object):
       rstart,rend = self.range(chrom)
     except ValueError:
       raise ValueError, "%s is not found in the index. Possibly you are not using the genome wide matrix" %(chrom)
-    submatrix   = contactmatrix(rend - rstart + 1)
-    submatrix.matrix = self.matrix[rstart:rend+1,rstart:rend+1]
-    submatrix.idx    = np.core.records.fromrecords(self.idx[rstart:rend+1],dtype=self.idxdtype)
-    try:
-      self.genome
-      self.resolution
-    except AttributeError:
-      warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
-    else:
+    submatrix   = contactmatrix(rend - rstart)
+    submatrix.matrix = self.matrix[rstart:rend,rstart:rend]
+    submatrix.idx    = np.core.records.fromrecords(self.idx[rstart:rend],dtype=self.idxdtype)
+    
+    if hasattr(self,"genome") and hasattr(self,"resolution"):
       submatrix.genome     = self.genome
       submatrix.resolution = self.resolution
+    else:
+      warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
+      
     submatrix._applyedMethods['subMatrix'] = chrom
     return submatrix
   
   
-  #==============================================================
+  #==============================================================Probabiliy matrix methods
+  def getfmax(self,method = 'NM',genome=None,resolution=None):
+    """
+    calculate fmax based on different methods
+    """
+    self.__checkGenomeResolution(genome,resolution)
+    
+    genomedb = alab.utils.genome(self.genome,usechr=['#','X'])
+    
+    if method == 'NM':
+      fmax = np.zeros(len(self))
+      for chrom in genomedb.info['chrom']:
+        cstart, cend = self.range(chrom)
+        for i in range(cstart+1,cend-1):
+          fmax[i] = min(self.matrix[i,i+1],self.matrix[i,i-1])
+        fmax[cstart] = self.matrix[cstart,cstart+1] #p telomere
+        fmax[cend]   = self.matrix[cend,cend-1] #q telomere
+      return fmax
+    else:
+      pass
+    
   #==============================================================plotting methods
   def plot(self,figurename,log=True,**kwargs):
     """
@@ -354,17 +385,7 @@ class contactmatrix(object):
         if no genome info found along with the matrix, genome parameter must be specified
         hg/mm9..
     """
-    import alab.utils
-    try:
-      self.genome
-      self.resolution
-    except AttributeError:
-      warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
-      if (genome is None) or (resolution is None):
-        raise ValueError, "No genome info is found! Genome and resolution parameter must be specified."
-      else:
-        self.genome = genome
-        self.resolution = resolution
+    self.__checkGenomeResolution(genome,resolution)
         
     genomedb = alab.utils.genome(self.genome,usechr=['#','X'])
     TotalSums   = []
@@ -400,14 +421,12 @@ class contactmatrix(object):
     h5f.create_dataset('matrix', data=self.matrix, compression = 'gzip', compression_opts=9)
     h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
     h5f.create_dataset('applyedMethods', data=cPickle.dumps(self._applyedMethods))
-    try:
-      self.genome
-      self.resolution
-    except AttributeError:
-      warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
-    else:
+    if hasattr(self,"genome") and hasattr(self,"resolution"):
       h5f.create_dataset('genome',data = cPickle.dumps(self.genome))
       h5f.create_dataset('resolution',data = cPickle.dumps(self.resolution))
+    else:
+      warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
+      
     h5f.close()
 #------------------------------------------------------------------------------------------
 
