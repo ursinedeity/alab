@@ -60,7 +60,6 @@ def ultracorrectSymmetricWithVector(x,v = None,M=None,diag = -1,
   #x  = x * corr * corr #renormalizing everything
   #totalBias /= corr
   return _x
-
 #=====================================================================
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -100,3 +99,23 @@ def diagnorm(A,countzero = False,norm = True):
           _A[i,j] = _A[i,j] / diagMean[offset]
   
   return _A,diagMean,diagSum,diagCount
+
+#======================================================
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+@cython.nonecheck(False)
+def neighbourFmaximization(A,fmax):
+  cdef int i,j,N,minfmax
+  cdef np.ndarray[np.float32_t, ndim=2] _A = A 
+  N = len(_A)
+  for i in range(N):
+    for j in range(N):
+      minfmax = min(fmax[i],fmax[j])
+      if (minfmax != 0) and (_A[i,j] != 0):
+        _A[j,i] = _A[i,j] = min(_A[i,j]/minfmax, 1.0)
+      else:
+        _A[i,j] = _A[j,i] = 0
+  return _A
+
+#======================

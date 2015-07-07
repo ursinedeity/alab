@@ -12,7 +12,7 @@ from alab.plots import plotxy, plotmatrix, histogram
 import alab.utils
 
 class contactmatrix(object):
-  idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int)])
+  _idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int)])
   def __init__(self,filename,genome=None,resolution=None,usechr=['#','X']):
     self._applyedMethods = {}
     if isinstance(filename,int):
@@ -51,7 +51,7 @@ class contactmatrix(object):
           idx.append(line[0:3])
           self.matrix[i] = line[3:]
         f.close()
-        self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self.idxdtype)
+        self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self._idxdtype)
     #----------------end filename
     if isinstance(genome,str) and isinstance(resolution,int):
       genomedb    = alab.utils.genome(genome,usechr=usechr)
@@ -63,7 +63,7 @@ class contactmatrix(object):
   #==================================================
   def _buildindex(self,chromlist,startlist,endlist):
     idxlist = np.column_stack([chromlist,startlist,endlist])
-    self.idx = np.core.records.fromarrays(np.array(idxlist).transpose(),dtype=self.idxdtype)
+    self.idx = np.core.records.fromarrays(np.array(idxlist).transpose(),dtype=self._idxdtype)
   def buildindex(self,**kwargs):
     warnings.warn("buildindex is deprecated, specify genome and resolution instead of building index manually.", DeprecationWarning)
     self._buildindex(**kwargs)
@@ -103,7 +103,7 @@ class contactmatrix(object):
     if hasattr(self,"genome") and hasattr(self,"resolution"):
       pass
     else:
-      warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
+      warnings.warn("No genome and resolution is specified within the file, try to assign attributes.")
       if (genome is None) or (resolution is None):
         raise ValueError, "No genome info is found! Genome and resolution parameter must be specified."
       else:
@@ -118,20 +118,38 @@ class contactmatrix(object):
     else:
       warnings.warn("Method removeDiagonal was done before, use force = True to overwrite it.")
       
-  def removePoorRegions(self, cutoff=1, force = False):
+  def removePoorRegions(self, cutoff=1, usepvalue = 0.3, force = False):
     """Removes "cutoff" percent of bins with least counts
 
     Parameters
     ----------
       cutoff : int, 0<cutoff<100
         Percent of lowest-counts bins to be removed
+      usepvalue: float, 0<usepvalue<1
+        use this pvalue as correlation cutoff to remove bins
+        bins whose pvalue greater than this cutoff will be removed
     """
     if (not self.applyed('removePoorRegions')) or force:
       rowsum   = self.rowsum()
       mask     = np.flatnonzero(rowsum < np.percentile(rowsum[rowsum > 0],cutoff))
-      self.matrix[mask,:] = 0
-      self.matrix[:,mask] = 0
-      self._applyedMethods['removePoorRegions'] = True
+      #use correlation pvalue
+      from scipy.stats import pearsonr,entropy
+      newmask = []
+      for i in mask:
+        if rowsum[i] == 0:
+          continue
+        split = alab.utils.binomialSplit(self.matrix[i])
+        corr,pvalue  = pearsonr(split[0],split[1])#returns corr
+        rowentropy   = entropy(self.matrix[i])
+        if pvalue > usepvalue:
+          newmask.append(i)
+          print i,rowsum[i],(corr,pvalue),"Remove",rowentropy
+        else:
+          print i,rowsum[i],(corr,pvalue),"Keep",rowentropy
+      self.matrix[newmask,:] = 0
+      self.matrix[:,newmask] = 0
+      print "%d low converage bins were removed." % (len(newmask))
+      self._applyedMethods['removePoorRegions'] = (cutoff,len(newmask))
     else:
       warnings.warn("Method removePoorRegions was done before, use force = True to overwrite it.")
       
@@ -282,7 +300,7 @@ class contactmatrix(object):
       raise ValueError, "%s is not found in the index. Possibly you are not using the genome wide matrix" %(chrom)
     submatrix   = contactmatrix(rend - rstart)
     submatrix.matrix = self.matrix[rstart:rend,rstart:rend]
-    submatrix.idx    = np.core.records.fromrecords(self.idx[rstart:rend],dtype=self.idxdtype)
+    submatrix.idx    = np.core.records.fromrecords(self.idx[rstart:rend],dtype=self._idxdtype)
     
     if hasattr(self,"genome") and hasattr(self,"resolution"):
       submatrix.genome     = self.genome
@@ -295,26 +313,68 @@ class contactmatrix(object):
   
   
   #==============================================================Probabiliy matrix methods
-  def getfmax(self,method = 'NM',genome=None,resolution=None):
+  def getfmax(self,method = 'UF',genome=None,resolution=None,cc=20):
     """
     calculate fmax based on different methods
     """
     self.__checkGenomeResolution(genome,resolution)
-    
     genomedb = alab.utils.genome(self.genome,usechr=['#','X'])
+    fmax = None
     
-    if method == 'NM':
+    if method == 'NM':#method neighbour max
       fmax = np.zeros(len(self))
       for chrom in genomedb.info['chrom']:
-        cstart, cend = self.range(chrom)
+        cstart, cend = self.range(chrom) #cend is increased by one
         for i in range(cstart+1,cend-1):
           fmax[i] = min(self.matrix[i,i+1],self.matrix[i,i-1])
         fmax[cstart] = self.matrix[cstart,cstart+1] #p telomere
-        fmax[cend]   = self.matrix[cend,cend-1] #q telomere
-      return fmax
+        fmax[cend-1] = self.matrix[cend-1,cend-2] #q telomere
+    elif method == 'UF':#method uniform fmax
+      if not hasattr(self.domainIdx):
+        raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
+      #Get all intra domain interactions (upper triangle)
+      upperTriangle = []
+      for domainRec in self.domainIdx:
+        chrStartBin,chrEndBin = self.range(domainRec['chrom'])
+        domainStart  = chrStartBin + int(domainRec['start'] / self.resolution)
+        domainEnd    = chrStartBin + int(domainRec['end']   / self.resolution) + 1
+        if (domainEnd - domainStart) > cc:
+          continue
+        domainMatrix = self.matrix[domainStart:domainEnd, domainStart:domainEnd]#domain matrix
+        upperTriangle.extend(domainMatrix[np.triu_indices(len(domainMatrix))])#get the upper triangle
+
+      upperTriangle = np.array(upperTriangle)
+      upperTriangle = upperTriangle[upperTriangle > 0]
+      lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(upperTriangle)#get quartiles and fence
+      upperTriangle = upperTriangle[(upperTriangle > lowerFence) & (upperTriangle < upperFence)] #trim to better range
+      fmax = upperTriangle.mean()#get mean
     else:
       pass
+    return fmax
+  
+  def fmaximization(self,fmax):
+    """
+     use fmax to generate probability matrix
+    """
+    if isinstance(fmax,float) or isinstance(fmax,int):
+      print "Uniform fmax detected"
+      self.matrix = self.matrix/fmax
+      self.matrix.clip(max=1)
+    elif isinstance(fmax,np.ndarray):
+      from numutils import neighbourFmaximization
+      if len(self) != len(fmax):
+        raise ValueError,"Matrix and fmax dimension doesn't match! please check fmax length."
+      self.matrix = neighbourFmaximization(self.matrix,fmax)
+    else:
+      raise AttributeError, "Not supported fmax type!"
     
+  def assignDomain(self,domain,pattern=''):
+    from alab.files import bedgraph
+    if not isinstance(domain,bedgraph):
+      raise TypeError,"Bedgraph instance required, see alab.files.bedgraph for more details"
+    self.domainIdx = domain.filter(pattern)
+    
+  
   #==============================================================plotting methods
   def plot(self,figurename,log=True,**kwargs):
     """
