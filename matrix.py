@@ -153,7 +153,7 @@ class contactmatrix(object):
     else:
       warnings.warn("Method removePoorRegions was done before, use force = True to overwrite it.")
       
-  def identifyInterOutliersCutoff(self,N=10):
+  def identifyInterOutliersCutoff(self,N=100):
     if self.applyed('normalization'):
       raise RuntimeError, "Matrix is already normalized, raw matrix is needed."
     intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
@@ -308,15 +308,40 @@ class contactmatrix(object):
     else:
       warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
       
+    submatrix._applyedMethods = self._applyedMethods
     submatrix._applyedMethods['subMatrix'] = chrom
     return submatrix
   
   
   #==============================================================Probabiliy matrix methods
-  def getfmax(self,method = 'UF',genome=None,resolution=None,cc=20):
+  def getDomainMatrix(self,domainChrom,domainStartPos,domainEndPos,maxSize=None):
+    """
+      Return a submatrix defined by domainChrom, domainStartPos, domainEndPos
+      Parameters:
+      -----------
+      domainChrom: domain chromosome e.g. 'chr1'
+      domainStartPos: int e.g. 0
+      domainEndPos: int e.g. 700000
+      maxSize: int, optional
+        max domain size, in bins
+        if the domain is larger than a given number of bins, this function will return None
+    """
+    chrStartBin,chrEndBin = self.range(domainChrom)
+    domainStartBin  = chrStartBin + int(domainStartPos / self.resolution)
+    domainEndBin    = chrStartBin + int(domainEndPos   / self.resolution)
+    if maxSize is None:
+      return self.matrix[domainStartBin:domainEndBin, domainStartBin:domainEndBin]
+    elif (domainEndBin - domainStartBin) <= maxSize:
+      return self.matrix[domainStartBin:domainEndBin, domainStartBin:domainEndBin]
+    else:
+      return None
+    
+  def getfmax(self,method = 'UF',genome=None,resolution=None,maxSize=20):
     """
     calculate fmax based on different methods
     """
+    if self.applyed('probabilityMatrix'):
+      raise RuntimeError, "This is already a probability matrix!"
     self.__checkGenomeResolution(genome,resolution)
     genomedb = alab.utils.genome(self.genome,usechr=['#','X'])
     fmax = None
@@ -330,17 +355,15 @@ class contactmatrix(object):
         fmax[cstart] = self.matrix[cstart,cstart+1] #p telomere
         fmax[cend-1] = self.matrix[cend-1,cend-2] #q telomere
     elif method == 'UF':#method uniform fmax
-      if not hasattr(self.domainIdx):
+      if not hasattr(self,"domainIdx"):
         raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
+      print "Using maxSize = %d, eliminating domains larger than %dkb." % (maxSize,maxSize*self.resolution/1000)
       #Get all intra domain interactions (upper triangle)
       upperTriangle = []
       for domainRec in self.domainIdx:
-        chrStartBin,chrEndBin = self.range(domainRec['chrom'])
-        domainStart  = chrStartBin + int(domainRec['start'] / self.resolution)
-        domainEnd    = chrStartBin + int(domainRec['end']   / self.resolution) + 1
-        if (domainEnd - domainStart) > cc:
+        domainMatrix = self.getDomainMatrix(domainRec['chrom'],domainRec['start'],domainRec['end'],maxSize)#domain matrix, eliminating domains that are larger than 20 bins
+        if domainMatrix is None:
           continue
-        domainMatrix = self.matrix[domainStart:domainEnd, domainStart:domainEnd]#domain matrix
         upperTriangle.extend(domainMatrix[np.triu_indices(len(domainMatrix))])#get the upper triangle
 
       upperTriangle = np.array(upperTriangle)
@@ -355,26 +378,72 @@ class contactmatrix(object):
   def fmaximization(self,fmax):
     """
      use fmax to generate probability matrix
+     for uniform fmax, simply divide the matrix by fmax and clip to 1
+     for neighbouring contact fmax
+       P[i,j] = F[i,j]/min(fmax[i],fmax[j])
     """
-    if isinstance(fmax,float) or isinstance(fmax,int):
+    if self.applyed('probabilityMatrix'):
+      raise RuntimeError, "This is already a probability matrix!"
+    if isinstance(fmax,float) or ininstance(fmax,np.float32) or isinstance(fmax,int):
       print "Uniform fmax detected"
       self.matrix = self.matrix/fmax
       self.matrix.clip(max=1)
+      self._applyedMethods['probabilityMatrix'] = 'Uniform Fmax'
     elif isinstance(fmax,np.ndarray):
       from numutils import neighbourFmaximization
       if len(self) != len(fmax):
         raise ValueError,"Matrix and fmax dimension doesn't match! please check fmax length."
       self.matrix = neighbourFmaximization(self.matrix,fmax)
+      self._applyedMethods['probabilityMatrix'] = 'Neighbouring Fmax'
     else:
       raise AttributeError, "Not supported fmax type!"
     
+    
   def assignDomain(self,domain,pattern=''):
+    """
+      Load Domain information
+      Parameters:
+      -----------
+      domain: alab.files.bedgraph instance
+      pattern:str
+        a string use to filter the flags in the bedgraph
+    """
     from alab.files import bedgraph
     if not isinstance(domain,bedgraph):
       raise TypeError,"Bedgraph instance required, see alab.files.bedgraph for more details"
     self.domainIdx = domain.filter(pattern)
     
-  
+  def makeDomainLevelMatrix(self,method='topmean',top=10):
+    """
+      Use domain INFO to generate Domain level matrix
+      Parameters:
+      -----------
+      method:
+      top: int 0<top<100
+        the top percentage to calculate the mean, top=10 means top 10% of the subdomain matrix
+    """
+    if not hasattr(self,"domainIdx"):
+      raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
+    domainLevelMatrix = contactmatrix(len(self.domainIdx))
+    domainLevelMatrix._buildidx(self.domainIdx['chrom'],self.domainIdx['start'],self.domainIdx['end'])
+    domainLevelMatrix.genome = self.genome
+    domainLevelMatrix.resolution = self.resolution
+    domainLevelMatrix._applyedMethods = self._applyedMethods
+    for i in range(len(self.domainIdx)):
+      chrStartBin_i,chrEndBin_i = self.range(self.domainIdx[i]['chrom'])
+      domainStartBin_i = chrStartBin_i + int(self.domainIdx[i]['start'] / self.resolution)
+      domainEndBin_i   = chrStartBin_i + int(self.domainIdx[i]['end']   / self.resolution)
+      print self.domainIdx[i]
+      for j in range(i,len(self.domainIdx)):
+        chrStartBin_j,chrEndBin_j = self.range(self.domainIdx[j]['chrom'])
+        domainStartBin_j = chrStartBin_j + int(self.domainIdx[j]['start'] / self.resolution)
+        domainEndBin_j   = chrStartBin_j + int(self.domainIdx[j]['end']   / self.resolution)
+        submatrix = self.matrix[ domainStartBin_i:domainEndBin_i , domainStartBin_j:domainEndBin_j ]
+        bound = np.percentile(submatrix,100-top)
+        domainLevelMatrix.matrix[i,j] = domainLevelMatrix[j,i] = np.mean(submatrix[submatrix >= bound])
+      
+    domainLevelMatrix._applyedMethods['domainLevel'] = method
+    return domainLevelMatrix
   #==============================================================plotting methods
   def plot(self,figurename,log=True,**kwargs):
     """
