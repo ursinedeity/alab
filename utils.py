@@ -53,6 +53,8 @@ class genome(object):
     assert isinstance(chromNum,int)
     return self.info['chrom'][chromNum]
 
+#============================================end genome class
+
 def listadd(a,b):
   """
     Add 2 array/list that have different sizes
@@ -65,7 +67,25 @@ def listadd(a,b):
     c[:len(b)] += b
   return c
 
+def boxplotStats(data):
+  """
+    The same as boxplot.stats() in R
+    return 5 stats :
+      Lower Fence
+      Lower Quartile
+      Median
+      Upper Quartile
+      Upper Fence
+  """
+  Q1,Q2,Q3 = np.percentile(data,[25,50,75])#get quartiles
+  upperFence = Q3 + 1.5*(Q3-Q1)
+  lowerFence = Q1 - 1.5*(Q3-Q1)
+  return lowerFence,Q1,Q2,Q3,upperFence
+  
 def powerLawSmooth(matrix,w=3,s=3,p=3):
+  """
+    Power law smoothing function
+  """
   csum = 0.0
   divider = 0.0
   for i in range(-w,w+1):
@@ -75,6 +95,35 @@ def powerLawSmooth(matrix,w=3,s=3,p=3):
       divider += decay
   
   return csum/divider
+
+def binomialSplit(A,p=0.5):
+  """
+    split a matrix into 2 matrixes, using binomial randoms
+  """
+  
+  assert isinstance(A,np.ndarray)
+  split1 = np.zeros(np.shape(A))
+  split2 = np.zeros(np.shape(A))
+  if len(np.shape(A)) == 1:
+    for i in range(np.shape(A)[0]):
+      if A[i] > 0:
+        s = np.random.binomial(A[i],p,1)[0]
+        split1[i] = s
+        split2[i] = A[i] - s
+  elif len(np.shape(A)) == 2:
+    for i in range(np.shape(A)[0]):
+      for j in range(i,np.shape(A)[1]):
+        if A[i,j] > 0:
+          s = np.random.binomial(A[i,j],p,1)[0]
+          split1[i,j] = s
+          split1[j,i] = s
+          split2[i,j] = A[i,j] - s
+          split2[j,i] = A[i,j] - s
+  else:
+    pass
+  
+  return split1,split2
+     
 #==========================================from mirny's lab source codes
 def PCA(A, numPCs=6, verbose=False):
     """performs PCA analysis, and returns 6 best principal components
