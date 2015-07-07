@@ -384,7 +384,7 @@ class contactmatrix(object):
     """
     if self.applyed('probabilityMatrix'):
       raise RuntimeError, "This is already a probability matrix!"
-    if isinstance(fmax,float) or ininstance(fmax,np.float32) or isinstance(fmax,int):
+    if isinstance(fmax,float) or isinstance(fmax,np.float32) or isinstance(fmax,int):
       print "Uniform fmax detected"
       self.matrix = self.matrix/fmax
       self.matrix.clip(max=1)
