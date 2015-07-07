@@ -6,17 +6,6 @@ import numpy as np
 import re
 import bisect
 
-def genchrnum(chrom):
-  """ Sort by chromosome """
-  if chrom:
-    num = chrom[3:]
-    if   num == 'X': num = 23
-    elif num == 'Y': num = 24
-    elif num == 'M': num = 25
-    else: num = int(num)
-  else:
-    num = 0
-  return num
 #====================================================================================
 class bedgraph(object):
   """
@@ -27,7 +16,7 @@ class bedgraph(object):
     chromEnd   - End position of the feature in standard chromosomal coordinates
     dataValue  - Track data values can be integer or real
   """
-  bedgraphdtype = np.dtype([('chrom','S5'),('start',int),('end',int),('value',float),('flag','S20')])
+  _bedgraphdtype = np.dtype([('chrom','S5'),('start',int),('end',int),('value',float),('flag','S20')])
   
   def __init__(self,filename=None,usecols=(0,1,2,3,3),**kwargs):
     self.data            = {}
@@ -39,14 +28,14 @@ class bedgraph(object):
         f = loadstream(filename)
         readtable = np.genfromtxt(
                             f,
-                            dtype=self.bedgraphdtype,
+                            dtype=self._bedgraphdtype,
                             usecols=usecols,
                             **kwargs)
         f.close()
       elif isinstance(filename,np.ndarray) or isinstance(filename,list):
         readtable = np.core.records.fromarrays(
                             np.array(filename).transpose()[[usecols]],
-                            dtype = self.bedgraphdtype)
+                            dtype = self._bedgraphdtype)
       for line in readtable:
         chrom = line['chrom']
         #if np.isnan(line['value']):
@@ -60,14 +49,26 @@ class bedgraph(object):
 
       for chrom in self.data:
         self.data[chrom] = np.core.records.fromrecords(self.data[chrom],
-                                                      dtype = self.bedgraphdtype)
+                                                      dtype = self._bedgraphdtype)
         self.data[chrom].sort(kind='heapsort',order='start')
       
       self._flush()
       
-  #========================================================
+  #========================================================  
+  def genchrnum(self,chrom):
+    """ Sort by chromosome """
+    if chrom:
+      num = chrom[3:]
+      if   num == 'X': num = 23
+      elif num == 'Y': num = 24
+      elif num == 'M': num = 25
+      else: num = int(num)
+    else:
+      num = 0
+    return num
+  
   def _flush(self):
-    self.__sorted_keys = sorted(self.data.keys(),key=lambda x:genchrnum(x))
+    self.__sorted_keys = sorted(self.data.keys(),key=lambda x:self.genchrnum(x))
     
   def __repr__(self):
     represent = ''
@@ -119,7 +120,7 @@ class bedgraph(object):
     if len(intersectList) == 0:
       return None
     else:
-      intersectList = np.core.records.fromrecords(intersectList,dtype=self.bedgraphdtype)
+      intersectList = np.core.records.fromrecords(intersectList,dtype=self._bedgraphdtype)
       if intersectList[0]['start'] < querystart:
         intersectList[0]['start'] = querystart
       if intersectList[-1]['end'] > querystop:
@@ -145,7 +146,7 @@ class bedgraph(object):
       records = []
       for i in range(start,stop,step):
         records.append(self.__getonerec(i))
-      return np.core.records.fromrecords(records,dtype=self.bedgraphdtype)
+      return np.core.records.fromrecords(records,dtype=self._bedgraphdtype)
       
     elif isinstance(key,tuple):
       """For case a['chr1',3000000:4000000], output average value"""
@@ -195,11 +196,11 @@ class bedgraph(object):
     assert isinstance(query,slice)
     
     new = np.array([(chrom,query.start,query.stop,value,'')],
-                   dtype=self.bedgraphdtype)
+                   dtype=self._bedgraphdtype)
     if not chrom in self.data:
       self.data[chrom] = []
       self.data[chrom].append(new)
-      self.data[chrom] = np.core.records.fromrecords(self.data[chrom],dtype = self.bedgraphdtype)
+      self.data[chrom] = np.core.records.fromrecords(self.data[chrom],dtype = self._bedgraphdtype)
       self._flush()
     else:
       i = bisect.bisect(self.data[chrom]['end'],query.start)
@@ -229,7 +230,7 @@ class bedgraph(object):
     for rec in self:
       if regpattern.match(rec['flag']):
         filterList.append(rec)
-    return np.core.records.fromrecords(filterList,dtype=self.bedgraphdtype)
+    return np.core.records.fromrecords(filterList,dtype=self._bedgraphdtype)
       
   #========================================================
   def save(self,filename,bedtype='bedgraph',style='%.8f'):
