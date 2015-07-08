@@ -308,7 +308,7 @@ class contactmatrix(object):
     else:
       warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
       
-    submatrix._applyedMethods = self._applyedMethods
+    submatrix._applyedMethods = np.copy(self._applyedMethods)
     submatrix._applyedMethods['subMatrix'] = chrom
     return submatrix
   
@@ -387,7 +387,7 @@ class contactmatrix(object):
     if isinstance(fmax,float) or isinstance(fmax,np.float32) or isinstance(fmax,int):
       print "Uniform fmax detected"
       self.matrix = self.matrix/fmax
-      self.matrix.clip(max=1)
+      self.matrix = self.matrix.clip(max=1)
       self._applyedMethods['probabilityMatrix'] = 'Uniform Fmax'
     elif isinstance(fmax,np.ndarray):
       from numutils import neighbourFmaximization
@@ -425,10 +425,10 @@ class contactmatrix(object):
     if not hasattr(self,"domainIdx"):
       raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
     domainLevelMatrix = contactmatrix(len(self.domainIdx))
-    domainLevelMatrix._buildidx(self.domainIdx['chrom'],self.domainIdx['start'],self.domainIdx['end'])
+    domainLevelMatrix._buildindex(self.domainIdx['chrom'],self.domainIdx['start'],self.domainIdx['end'])
     domainLevelMatrix.genome = self.genome
     domainLevelMatrix.resolution = self.resolution
-    domainLevelMatrix._applyedMethods = self._applyedMethods
+    domainLevelMatrix._applyedMethods = np.copy(self._applyedMethods)
     for i in range(len(self.domainIdx)):
       chrStartBin_i,chrEndBin_i = self.range(self.domainIdx[i]['chrom'])
       domainStartBin_i = chrStartBin_i + int(self.domainIdx[i]['start'] / self.resolution)
@@ -440,7 +440,7 @@ class contactmatrix(object):
         domainEndBin_j   = chrStartBin_j + int(self.domainIdx[j]['end']   / self.resolution)
         submatrix = self.matrix[ domainStartBin_i:domainEndBin_i , domainStartBin_j:domainEndBin_j ]
         bound = np.percentile(submatrix,100-top)
-        domainLevelMatrix.matrix[i,j] = domainLevelMatrix[j,i] = np.mean(submatrix[submatrix >= bound])
+        domainLevelMatrix.matrix[i,j] = domainLevelMatrix.matrix[j,i] = np.mean(submatrix[submatrix >= bound])
       
     domainLevelMatrix._applyedMethods['domainLevel'] = method
     return domainLevelMatrix
