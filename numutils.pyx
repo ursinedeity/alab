@@ -119,3 +119,25 @@ def neighbourFmaximization(A,fmax):
   return _A
 
 #======================
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+@cython.nonecheck(False)
+def generateSummaryMatrix(A,summaryBinStart,summaryBinEnd,top):
+  cdef int i,j,N
+  cdef float bound
+  N = len(summaryBinStart)
+  cdef np.ndarray[np.float32_t, ndim=2] _A = A
+  cdef np.ndarray[np.float32_t, ndim=2] X = np.empty((N,N),np.float32)
+  for i in range(N):
+    print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
+    for j in range(i,N):
+      submatrix = _A[summaryBinStart[i]:summaryBinEnd[i],summaryBinStart[j]:summaryBinEnd[j]]
+      bound = np.percentile(submatrix,100-top)
+      X[i,j] = X[j,i] = np.mean(submatrix[submatrix >= bound])
+  
+  return X
+#=======================
+      
+  
