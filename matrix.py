@@ -6,6 +6,7 @@ import numpy as np
 import os.path
 import re
 import h5py
+import copy
 import cPickle
 import warnings
 from alab.plots import plotxy, plotmatrix, histogram
@@ -54,6 +55,8 @@ class contactmatrix(object):
         self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self._idxdtype)
     #----------------end filename
     if isinstance(genome,str) and isinstance(resolution,int):
+      if hasattr(self,"genome") and hasattr(self,"resolution"):
+        raise RuntimeError, "Genome and resolution has already been specified."
       genomedb    = alab.utils.genome(genome,usechr=usechr)
       bininfo     = genomedb.bininfo(resolution)
       self.genome = genome
@@ -109,7 +112,7 @@ class contactmatrix(object):
       else:
         self.genome = genome
         self.resolution = resolution
-    
+
   #=========================================================filtering methods
   def removeDiagonal(self,force = False):
     if (not self.applyed('removeDiagonal')) or force:
@@ -308,13 +311,13 @@ class contactmatrix(object):
     else:
       warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
       
-    submatrix._applyedMethods = np.copy(self._applyedMethods)
+    submatrix._applyedMethods = copy.deepcopy(self._applyedMethods)
     submatrix._applyedMethods['subMatrix'] = chrom
     return submatrix
   
   
   #==============================================================Probabiliy matrix methods
-  def getDomainMatrix(self,domainChrom,domainStartPos,domainEndPos,maxSize=None):
+  def getDomainMatrix(self,domainChrom,domainStartPos,domainEndPos,rowmask,minSize=1,maxSize=None):
     """
       Return a submatrix defined by domainChrom, domainStartPos, domainEndPos
       Parameters:
@@ -322,23 +325,38 @@ class contactmatrix(object):
       domainChrom: domain chromosome e.g. 'chr1'
       domainStartPos: int e.g. 0
       domainEndPos: int e.g. 700000
+      minSize: int, > 0
+        min domain size
       maxSize: int, optional
         max domain size, in bins
         if the domain is larger than a given number of bins, this function will return None
     """
     chrStartBin,chrEndBin = self.range(domainChrom)
-    domainStartBin  = chrStartBin + int(domainStartPos / self.resolution)
-    domainEndBin    = chrStartBin + int(domainEndPos   / self.resolution)
-    if maxSize is None:
-      return self.matrix[domainStartBin:domainEndBin, domainStartBin:domainEndBin]
-    elif (domainEndBin - domainStartBin) <= maxSize:
-      return self.matrix[domainStartBin:domainEndBin, domainStartBin:domainEndBin]
+    domainStartBin  = chrStartBin + int( domainStartPos/ float(self.resolution) )
+    domainEndBin    = chrStartBin + int( np.ceil( domainEndPos/ float(self.resolution) ) )
+    newmatrix = None
+    if (domainEndBin - domainStartBin) >= minSize:
+      if maxSize is None:
+        newmatrix = self.matrix[domainStartBin:domainEndBin, domainStartBin:domainEndBin]
+      elif (domainEndBin - domainStartBin) <= maxSize:
+        newmatrix = self.matrix[domainStartBin:domainEndBin, domainStartBin:domainEndBin]
+      else:
+        return None
     else:
       return None
-    
-  def getfmax(self,method = 'UF',genome=None,resolution=None,maxSize=20):
+    maskloc = np.intersect1d(range(domainStartBin,domainEndBin),rowmask)
+    maskloc = maskloc - domainStartBin
+    newmatrix = np.delete(np.delete(newmatrix,maskloc,axis=0),maskloc,axis=1)
+    return newmatrix
+  
+  def getfmax(self,method = 'UF',genome=None,resolution=None,minSize=1,maxSize=2000,removeZero=True,boxplotTrim=True):
     """
     calculate fmax based on different methods
+    Parameters:
+    -----------
+    method: NM #neighbouring max
+            UF #uniform fmax
+    
     """
     if self.applyed('probabilityMatrix'):
       raise RuntimeError, "This is already a probability matrix!"
@@ -357,25 +375,41 @@ class contactmatrix(object):
     elif method == 'UF':#method uniform fmax
       if not hasattr(self,"domainIdx"):
         raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
+      print "Using minSize = %d, eliminating domains smaller than %dkb." % (minSize,minSize*self.resolution/1000)
       print "Using maxSize = %d, eliminating domains larger than %dkb." % (maxSize,maxSize*self.resolution/1000)
+      
       #Get all intra domain interactions (upper triangle)
       upperTriangle = []
+      skipDomains = 0
+      rowmask = np.flatnonzero(self.rowsum() == 0) #removed bins
       for domainRec in self.domainIdx:
-        domainMatrix = self.getDomainMatrix(domainRec['chrom'],domainRec['start'],domainRec['end'],maxSize)#domain matrix, eliminating domains that are larger than 20 bins
+        domainMatrix = self.getDomainMatrix(domainRec['chrom'],domainRec['start'],domainRec['end'],rowmask,minSize,maxSize)#domain matrix, eliminating domains that are larger than 20 bins
         if domainMatrix is None:
+          skipDomains += 1
           continue
         upperTriangle.extend(domainMatrix[np.triu_indices(len(domainMatrix))])#get the upper triangle
-
+      #--------scaning finished
+      print "%d domains are scanned, %d domains are eliminated." % (len(self.domainIdx),skipDomains)
       upperTriangle = np.array(upperTriangle)
-      upperTriangle = upperTriangle[upperTriangle > 0]
-      lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(upperTriangle)#get quartiles and fence
-      upperTriangle = upperTriangle[(upperTriangle > lowerFence) & (upperTriangle < upperFence)] #trim to better range
+      if removeZero:
+        print "Removing zeros"
+        upperTriangle = upperTriangle[upperTriangle > 0]
+      if boxplotTrim:
+        print "Trimming outliers"
+        lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(upperTriangle)#get quartiles and fence
+        upperTriangle = upperTriangle[(upperTriangle > lowerFence) & (upperTriangle < upperFence)] #trim to better range
+      
       fmax = upperTriangle.mean()#get mean
     else:
       pass
     return fmax
   
-  def fmaximization(self,fmax):
+  #-----------------------use fmax to get prob matrix
+  def fmaximization(self,**kwargs):
+    warnings.warn("fmaximization is deprecated, function name changed to fmaxzation.", DeprecationWarning)
+    self.fmaxzation(**kwargs)
+    
+  def fmaxzation(self,fmax):
     """
      use fmax to generate probability matrix
      for uniform fmax, simply divide the matrix by fmax and clip to 1
@@ -424,24 +458,22 @@ class contactmatrix(object):
     """
     if not hasattr(self,"domainIdx"):
       raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
+    from numutils import generateSummaryMatrix
+    
     domainLevelMatrix = contactmatrix(len(self.domainIdx))
     domainLevelMatrix._buildindex(self.domainIdx['chrom'],self.domainIdx['start'],self.domainIdx['end'])
     domainLevelMatrix.genome = self.genome
     domainLevelMatrix.resolution = self.resolution
-    domainLevelMatrix._applyedMethods = np.copy(self._applyedMethods)
+    domainLevelMatrix._applyedMethods = copy.deepcopy(self._applyedMethods)
+    
+    summaryBinStart = np.zeros(len(self.domainIdx))
+    summaryBinEnd   = np.zeros(len(self.domainIdx))
     for i in range(len(self.domainIdx)):
-      chrStartBin_i,chrEndBin_i = self.range(self.domainIdx[i]['chrom'])
-      domainStartBin_i = chrStartBin_i + int(self.domainIdx[i]['start'] / self.resolution)
-      domainEndBin_i   = chrStartBin_i + int(self.domainIdx[i]['end']   / self.resolution)
-      print self.domainIdx[i]
-      for j in range(i,len(self.domainIdx)):
-        chrStartBin_j,chrEndBin_j = self.range(self.domainIdx[j]['chrom'])
-        domainStartBin_j = chrStartBin_j + int(self.domainIdx[j]['start'] / self.resolution)
-        domainEndBin_j   = chrStartBin_j + int(self.domainIdx[j]['end']   / self.resolution)
-        submatrix = self.matrix[ domainStartBin_i:domainEndBin_i , domainStartBin_j:domainEndBin_j ]
-        bound = np.percentile(submatrix,100-top)
-        domainLevelMatrix.matrix[i,j] = domainLevelMatrix.matrix[j,i] = np.mean(submatrix[submatrix >= bound])
+      chrStartBin,chrEndBin = self.range(self.domainIdx[i]['chrom'])
+      summaryBinStart[i]    = chrStartBin + int(self.domainIdx[i]['start'] / float(self.resolution))
+      summaryBinEnd[i]      = chrStartBin + int(np.ceil(self.domainIdx[i]['end'] / float(self.resolution)))
       
+    domainLevelMatrix.matrix = generateSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,top=top)
     domainLevelMatrix._applyedMethods['domainLevel'] = method
     return domainLevelMatrix
   #==============================================================plotting methods
