@@ -422,7 +422,7 @@ class contactmatrix(object):
       print "Uniform fmax detected"
       self.matrix = self.matrix/fmax
       self.matrix = self.matrix.clip(max=1)
-      self._applyedMethods['probabilityMatrix'] = 'Uniform Fmax'
+      self._applyedMethods['probabilityMatrix'] = 'Uniform Fmax=%f' % (fmax)
     elif isinstance(fmax,np.ndarray):
       from numutils import neighbourFmaximization
       if len(self) != len(fmax):
@@ -474,7 +474,7 @@ class contactmatrix(object):
       summaryBinEnd[i]      = chrStartBin + int(np.ceil(self.domainIdx[i]['end'] / float(self.resolution)))
       
     domainLevelMatrix.matrix = generateSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,top=top)
-    domainLevelMatrix._applyedMethods['domainLevel'] = method
+    domainLevelMatrix._applyedMethods['domainLevel'] = "%s/top=%d%s" % (method,top,'%')
     return domainLevelMatrix
   #==============================================================plotting methods
   def plot(self,figurename,log=True,**kwargs):
