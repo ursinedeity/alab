@@ -406,10 +406,10 @@ class contactmatrix(object):
   
   #-----------------------use fmax to get prob matrix
   def fmaximization(self,**kwargs):
-    warnings.warn("fmaximization is deprecated, function name changed to fmaxzation.", DeprecationWarning)
-    self.fmaxzation(**kwargs)
+    warnings.warn("fmaximization is deprecated, function name changed to fmaxScaling.", DeprecationWarning)
+    self.fmaxScaling(**kwargs)
     
-  def fmaxzation(self,fmax):
+  def fmaxScaling(self,fmax):
     """
      use fmax to generate probability matrix
      for uniform fmax, simply divide the matrix by fmax and clip to 1
