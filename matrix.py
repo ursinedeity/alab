@@ -13,7 +13,7 @@ from alab.plots import plotxy, plotmatrix, histogram
 import alab.utils
 
 class contactmatrix(object):
-    _idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int)])
+    _idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int),('flag','S10')])
     def __init__(self,filename,genome=None,resolution=None,usechr=['#','X']):
         self._applyedMethods = {}
         if isinstance(filename,int):
@@ -21,10 +21,7 @@ class contactmatrix(object):
         elif isinstance(filename,str):
             if not os.path.isfile(filename):
                 raise IOError,"File %s doesn't exist!\n" % (filename)
-            if os.path.splitext(filename)[1] == '.npz':
-                self.matrix = np.load(filename)['matrix']
-                self.idx    = np.load(filename)['idx']
-            elif os.path.splitext(filename)[1] == '.hdf5':
+            if os.path.splitext(filename)[1] == '.hdf5':
                 h5f = h5py.File(filename,'r')
                 self.matrix = h5f['matrix'][:]
                 self.idx    = h5f['idx'][:]
@@ -43,7 +40,8 @@ class contactmatrix(object):
                 n    = len(line) - 3
                 idx  = []
                 i    = 0
-                idx.append(line[0:3])
+                tidx = line[0:3];tidx.append('')
+                idx.append(tidx)
                 self.matrix = np.zeros((n,n),dtype = np.float32)
                 self.matrix[i] = line[3:]
                 for s in f:
@@ -59,13 +57,14 @@ class contactmatrix(object):
                 raise RuntimeError, "Genome and resolution has already been specified."
             genomedb    = alab.utils.genome(genome,usechr=usechr)
             bininfo     = genomedb.bininfo(resolution)
+            flaglist    = ['' for i in range(len(bininfo.chromList))]
             self.genome = genome
             self.resolution = resolution
-            self._buildindex(bininfo.chromList,bininfo.startList,bininfo.endList)
+            self._buildindex(bininfo.chromList,bininfo.startList,bininfo.endList,flaglist)
       
     #==================================================
-    def _buildindex(self,chromlist,startlist,endlist):
-        idxlist = np.column_stack([chromlist,startlist,endlist])
+    def _buildindex(self,chromlist,startlist,endlist,flaglist):
+        idxlist = np.column_stack([chromlist,startlist,endlist,flaglist])
         self.idx = np.core.records.fromarrays(np.array(idxlist).transpose(),dtype=self._idxdtype)
     def buildindex(self,**kwargs):
         warnings.warn("buildindex is deprecated, specify genome and resolution instead of building index manually.", DeprecationWarning)
@@ -149,8 +148,9 @@ class contactmatrix(object):
                     print i,rowsum[i],(corr,pvalue),"Remove",rowentropy
                 else:
                     print i,rowsum[i],(corr,pvalue),"Keep",rowentropy
-            self.matrix[newmask,:] = 0
-            self.matrix[:,newmask] = 0
+            self.matrix[newmask,:]    = 0
+            self.matrix[:,newmask]    = 0
+            self.idx['flag'][newmask] = 'Removed'
             print "%d low converage bins were removed." % (len(newmask))
             self._applyedMethods['removePoorRegions'] = (cutoff,len(newmask))
         else:
@@ -461,7 +461,7 @@ class contactmatrix(object):
         from numutils import generateSummaryMatrix
         
         domainLevelMatrix = contactmatrix(len(self.domainIdx))
-        domainLevelMatrix._buildindex(self.domainIdx['chrom'],self.domainIdx['start'],self.domainIdx['end'])
+        domainLevelMatrix._buildindex(self.domainIdx['chrom'],self.domainIdx['start'],self.domainIdx['end'],self.domainIdx['flag'])
         domainLevelMatrix.genome = self.genome
         domainLevelMatrix.resolution = self.resolution
         domainLevelMatrix._applyedMethods = copy.deepcopy(self._applyedMethods)
