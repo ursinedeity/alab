@@ -47,7 +47,8 @@ class contactmatrix(object):
                 for s in f:
                     i += 1
                     line = re.split('\t+|\s+',s.rstrip())
-                    idx.append(line[0:3])
+                    tidx = line[0:3];tidx.append('')
+                    idx.append(tidx)
                     self.matrix[i] = line[3:]
                 f.close()
                 self.idx    = np.core.records.fromarrays(np.array(idx).transpose(),dtype=self._idxdtype)
