@@ -345,6 +345,8 @@ class contactmatrix(object):
                 v0 = np.diagonal(self.matrix,1)
                 v1 = np.append(v0[0],v0)
                 v2 = np.append(v0,v0[-1])
+                np.fill_diagonal(self.matrix,v1+v2)
+                #replace 0 with large number so most likely the neighborhood of diagonal are not smoothed
             for row in range(len(chrlist)):
                 rstart,rend = self.range(chrlist[row])
                 for column in range(row,len(chrlist)):
