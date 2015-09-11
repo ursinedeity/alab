@@ -121,6 +121,7 @@ def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
     """
     row,column     = matrix.shape
     smoothedMatrix = np.copy(matrix)
+    smoothedCounts = 0
     for i in range(row):
         for j in range(column):
             window  = matrix[max(i-w,0):min(i+w+1,row),max(j-w,0):min(j+w+1,column)]
@@ -128,10 +129,11 @@ def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
                 newVal = powerLawSmooth(matrix,(i,j),w,s,p)
                 if newVal < matrix[i,j]:
                     smoothedMatrix[i,j] = newVal
+                    smoothedCounts += 1
             #--
         #--
     #--
-    return smoothedMatrix
+    return smoothedMatrix,smoothedCounts
 
 def binomialSplit(A,p=0.5):
     """

@@ -350,13 +350,13 @@ class contactmatrix(object):
                 for column in range(row,len(chrlist)):
                     cstart,cend           = self.range(chrlist[column])
                     print "Smoothing block (%s,%s)" % (chrlist[row],chrlist[column])
-                    tmpMatrix,no_smoothed = alab.utils.smoothSpikesInBlock(self.matrix[rstart:rend,cstart:cend],w,s,p)
+                    tmpMatrix,smoothedCounts = alab.utils.smoothSpikesInBlock(self.matrix[rstart:rend,cstart:cend],w,s,p)
                     self.matrix[rstart:rend,cstart:cend] = tmpMatrix
                     self.matrix[cstart:cend,rstart:rend] = tmpMatrix.T
                     if row == column:
-                        smoothed += no_smoothed
+                        smoothed += smoothedCounts
                     else:
-                        smoothed += 2*no_smoothed
+                        smoothed += 2*smoothedCounts
             self._applyedMethods['smoothByCutoff'] = smoothed
             print "Genomewide smoothing finished, %d contacts smoothed" % (smoothed)
         else:
