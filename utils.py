@@ -1,5 +1,23 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015 University of Southern California and
+#                          Nan Hua
+# 
+# Authors: Nan Hua
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 __author__ = 'N.H.'
 import os
 import re
@@ -164,6 +182,8 @@ def binomialSplit(A,p=0.5):
     return split1,split2
      
 #==========================================from mirny's lab source codes
+#See details in Imakaev et al. (2012)
+#Directly imported here in case ones missing mirnylib
 def PCA(A, numPCs=6, verbose=False):
     """performs PCA analysis, and returns 6 best principal components
     result[0] is the first PC, etc"""

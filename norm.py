@@ -1,5 +1,22 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015 University of Southern California and
+#                          Nan Hua
+# 
+# Authors: Nan Hua
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 __author__ = 'N.H.'
 
 import numpy as np
@@ -30,7 +47,7 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
     FL: intermediate convergence statistics on/off.
     RES: residual error, measured by norm(diag(x)*A*x - e).
     """
-  
+    # see details in Knight and Ruiz (2012)
     (n,m) = A.shape
     #np.seterr(divide='ignore')
     print 'Verifying Matrix\n'
