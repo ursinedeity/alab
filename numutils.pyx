@@ -153,8 +153,8 @@ def powerLawSmooth(matrix,target,w=3,s=3,p=3):
         s:      weight of the location deviation
         p:      power of the location deviation
     """
-    cdef int x,y = target
-    cdef int matrix_x,matrix_y = matrix.shape
+    cdef int x = target[0], y = target[1]
+    cdef int matrix_x = matrix.shape[0], matrix_y = matrix.shape[1]
     cdef float csum = 0.0
     cdef float divider = 0.0
     cdef int i,j
