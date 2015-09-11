@@ -27,6 +27,7 @@ import warnings
 import numpy as np
 from collections import namedtuple
 from alab.io import loadstream
+import numutils
 
 #===========================================================================
 class genome(object):
@@ -100,29 +101,7 @@ def boxplotStats(data):
     lowerFence = Q1 - 1.5*(Q3-Q1)
     return lowerFence,Q1,Q2,Q3,upperFence
   
-def powerLawSmooth(matrix,target,w=3,s=3,p=3):
-    """
-        Power law smoothing function
-        Given a matrix and a tuple (x,y), compute the smoothed value of (x,y)
-        Parameters
-        ----------
-        matrix: numpy 2D array
-        target: tuple of (x,y)
-        w:      int of the window size, the smoothing is computed using target +/- w
-        s:      weight of the location deviation
-        p:      power of the location deviation
-    """
-    x,y = target
-    csum = 0.0
-    divider = 0.0
-    for i in range(max(-w,-x),min(w+1,matrix.shape[0]-x)):
-        for j in range(max(-w,-y),min(w+1,matrix.shape[1]-y)):
-            decay = 1 / (abs(s*i) ** p + abs(s*j) ** p + 1.0)
-            csum += matrix[x+i,y+j] * decay
-            #print i,j
-            divider += decay
-  
-    return csum/divider
+powerLawSmooth = numutils.powerLawSmooth
 
 def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
     """

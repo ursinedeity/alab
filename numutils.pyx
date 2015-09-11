@@ -84,39 +84,39 @@ def ultracorrectSymmetricWithVector(x,v = None,M=None,diag = -1,
 @cython.cdivision(True)
 @cython.nonecheck(False)
 def diagnorm(A,countzero = False,norm = True):
-  """ This function is to diagnol normalize matrix, 
-      countzero defines if we want to count zero values when calculate diagnol mean or not
-  """
-  cdef int i,j,N,offset
-  N = len(A)
-  cdef np.ndarray[np.float32_t, ndim = 2] _A = A
-  cdef np.ndarray[np.float32_t, ndim = 1] diagMean  = np.empty(N,np.float32)
-  cdef np.ndarray[np.float32_t, ndim = 1] diagSum   = np.empty(N,np.float32)
-  cdef np.ndarray[np.float32_t, ndim = 1] diagCount = np.empty(N,np.float32)
-  for offset in range(N):
-    diag = np.diagonal(_A,offset)
-    if countzero:
-      diagSum[offset]   = diag.sum()
-      diagMean[offset]  = diag.mean()
-      diagCount[offset] = len(diag)
-    else:
-      mask = np.flatnonzero(diag)
-      if len(diag[mask]) == 0:
-        diagSum[offset]   = 0
-        diagMean[offset]  = 0
-        diagCount[offset] = 0
-      else:
-        diagMean[offset]  = diag[mask].mean()
-        diagSum[offset]   = diag[mask].sum()
-        diagCount[offset] = len(diag[mask])
-  if norm:
-    for i in range(N):
-      for j in range(N):
-        offset = abs(i-j)
-        if diagMean[offset] != 0:
-          _A[i,j] = _A[i,j] / diagMean[offset]
+    """ This function is to diagnol normalize matrix, 
+        countzero defines if we want to count zero values when calculate diagnol mean or not
+    """
+    cdef int i,j,N,offset
+    N = len(A)
+    cdef np.ndarray[np.float32_t, ndim = 2] _A = A
+    cdef np.ndarray[np.float32_t, ndim = 1] diagMean  = np.empty(N,np.float32)
+    cdef np.ndarray[np.float32_t, ndim = 1] diagSum   = np.empty(N,np.float32)
+    cdef np.ndarray[np.float32_t, ndim = 1] diagCount = np.empty(N,np.float32)
+    for offset in range(N):
+        diag = np.diagonal(_A,offset)
+        if countzero:
+            diagSum[offset]   = diag.sum()
+            diagMean[offset]  = diag.mean()
+            diagCount[offset] = len(diag)
+        else:
+            mask = np.flatnonzero(diag)
+            if len(diag[mask]) == 0:
+                diagSum[offset]   = 0
+                diagMean[offset]  = 0
+                diagCount[offset] = 0
+            else:
+                diagMean[offset]  = diag[mask].mean()
+                diagSum[offset]   = diag[mask].sum()
+                diagCount[offset] = len(diag[mask])
+    if norm:
+        for i in range(N):
+            for j in range(N):
+                offset = abs(i-j)
+                if diagMean[offset] != 0:
+                    _A[i,j] = _A[i,j] / diagMean[offset]
   
-  return _A,diagMean,diagSum,diagCount
+    return _A,diagMean,diagSum,diagCount
 
 #======================================================
 @cython.boundscheck(False)
@@ -124,38 +124,68 @@ def diagnorm(A,countzero = False,norm = True):
 @cython.cdivision(True)
 @cython.nonecheck(False)
 def neighbourFmaximization(A,fmax):
-  cdef int i,j,N,minfmax
-  cdef np.ndarray[np.float32_t, ndim=2] _A = A 
-  N = len(_A)
-  for i in range(N):
-    for j in range(N):
-      minfmax = min(fmax[i],fmax[j])
-      if (minfmax != 0) and (_A[i,j] != 0):
-        _A[j,i] = _A[i,j] = min(_A[i,j]/minfmax, 1.0)
-      else:
-        _A[i,j] = _A[j,i] = 0
-  return _A
+    cdef int i,j,N,minfmax
+    cdef np.ndarray[np.float32_t, ndim=2] _A = A 
+    N = len(_A)
+    for i in range(N):
+        for j in range(N):
+            minfmax = min(fmax[i],fmax[j])
+            if (minfmax != 0) and (_A[i,j] != 0):
+                _A[j,i] = _A[i,j] = min(_A[i,j]/minfmax, 1.0)
+            else:
+                _A[i,j] = _A[j,i] = 0
+    return _A
 
 #======================
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+@cython.nonecheck(False)
+def powerLawSmooth(matrix,target,w=3,s=3,p=3):
+    """
+        Power law smoothing function
+        Given a matrix and a tuple (x,y), compute the smoothed value of (x,y)
+        Parameters
+        ----------
+        matrix: numpy 2D array
+        target: tuple of (x,y)
+        w:      int of the window size, the smoothing is computed using target +/- w
+        s:      weight of the location deviation
+        p:      power of the location deviation
+    """
+    cdef int x,y = target
+    cdef int matrix_x,matrix_y = matrix.shape
+    cdef float csum = 0.0
+    cdef float divider = 0.0
+    cdef int i,j
+    cdef np.ndarray[np.float32_t, ndim=2] _matrix = matrix
+    for i in range(max(-w,-x),min(w+1,matrix_x-x)):
+        for j in range(max(-w,-y),min(w+1,matrix_y-y)):
+            decay = 1 / (abs(s*i) ** p + abs(s*j) ** p + 1.0)
+            csum += _matrix[x+i,y+j] * decay
+            #print i,j
+            divider += decay
+  
+    return csum/divider
 
+#=====================
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
 def generateSummaryMatrix(A,summaryBinStart,summaryBinEnd,top):
-  cdef int i,j,N
-  cdef float bound
-  N = len(summaryBinStart)
-  cdef np.ndarray[np.float32_t, ndim=2] _A = A
-  cdef np.ndarray[np.float32_t, ndim=2] X = np.empty((N,N),np.float32)
-  for i in range(N):
-    print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
-    for j in range(i,N):
-      submatrix = _A[summaryBinStart[i]:summaryBinEnd[i],summaryBinStart[j]:summaryBinEnd[j]]
-      bound = np.percentile(submatrix,100-top)
-      X[i,j] = X[j,i] = np.mean(submatrix[submatrix >= bound])
+    cdef int i,j,N
+    cdef float bound
+    N = len(summaryBinStart)
+    cdef np.ndarray[np.float32_t, ndim=2] _A = A
+    cdef np.ndarray[np.float32_t, ndim=2] X = np.empty((N,N),np.float32)
+    for i in range(N):
+        print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
+        for j in range(i,N):
+            submatrix = _A[summaryBinStart[i]:summaryBinEnd[i],summaryBinStart[j]:summaryBinEnd[j]]
+            bound = np.percentile(submatrix,100-top)
+            X[i,j] = X[j,i] = np.mean(submatrix[submatrix >= bound])
   
-  return X
+    return X
 #=======================
-      
   
