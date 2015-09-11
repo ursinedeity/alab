@@ -115,8 +115,8 @@ def powerLawSmooth(matrix,target,w=3,s=3,p=3):
     x,y = target
     csum = 0.0
     divider = 0.0
-    for i in range(max(-w,-x),min(w+1,len(matrix)-x)):
-        for j in range(max(-w,-y),min(w+1,len(matrix)-y)):
+    for i in range(max(-w,-x),min(w+1,matrix.shape[0]-x)):
+        for j in range(max(-w,-y),min(w+1,matrix.shape[1]-y)):
             decay = 1 / (abs(s*i) ** p + abs(s*j) ** p + 1.0)
             csum += matrix[x+i,y+j] * decay
             #print i,j
@@ -138,6 +138,7 @@ def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
         
     """
     row,column     = matrix.shape
+    print matrix.shape
     smoothedMatrix = np.copy(matrix)
     smoothedCounts = 0
     for i in range(row):
