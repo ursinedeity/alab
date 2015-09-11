@@ -141,38 +141,6 @@ def neighbourFmaximization(A,fmax):
 @cython.wraparound(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-def powerLawSmooth(matrix,target,w=3,s=3,p=3):
-    """
-        Power law smoothing function
-        Given a matrix and a tuple (x,y), compute the smoothed value of (x,y)
-        Parameters
-        ----------
-        matrix: numpy 2D array
-        target: tuple of (x,y)
-        w:      int of the window size, the smoothing is computed using target +/- w
-        s:      weight of the location deviation
-        p:      power of the location deviation
-    """
-    cdef int x = target[0], y = target[1]
-    cdef int matrix_x = matrix.shape[0], matrix_y = matrix.shape[1]
-    cdef float csum = 0.0
-    cdef float divider = 0.0
-    cdef int i,j
-    cdef np.ndarray[np.float32_t, ndim=2] _matrix = matrix
-    for i in range(max(-w,-x),min(w+1,matrix_x-x)):
-        for j in range(max(-w,-y),min(w+1,matrix_y-y)):
-            decay = 1 / (abs(s*i) ** p + abs(s*j) ** p + 1.0)
-            csum += _matrix[x+i,y+j] * decay
-            #print i,j
-            divider += decay
-  
-    return csum/divider
-
-#=====================
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.cdivision(True)
-@cython.nonecheck(False)
 def generateSummaryMatrix(A,summaryBinStart,summaryBinEnd,top):
     cdef int i,j,N
     cdef float bound

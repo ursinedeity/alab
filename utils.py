@@ -27,7 +27,6 @@ import warnings
 import numpy as np
 from collections import namedtuple
 from alab.io import loadstream
-import numutils
 
 #===========================================================================
 class genome(object):
@@ -101,7 +100,28 @@ def boxplotStats(data):
     lowerFence = Q1 - 1.5*(Q3-Q1)
     return lowerFence,Q1,Q2,Q3,upperFence
   
-powerLawSmooth = numutils.powerLawSmooth
+def powerLawSmooth(matrix,target,w=3,s=3,p=3):
+    """
+        Power law smoothing function
+        Given a matrix and a tuple (x,y), compute the smoothed value of (x,y)
+        Parameters
+        ----------
+        matrix: numpy 2D array
+        target: tuple of (x,y)
+        w:      int of the window size, the smoothing is computed using target +/- w
+        s:      weight of the location deviation
+        p:      power of the location deviation
+    """
+    x,y = target
+    csum = 0.0
+    divider = 0.0
+    for i in range(max(-w,-x),min(w+1,matrix.shape[0]-x)):
+        for j in range(max(-w,-y),min(w+1,matrix.shape[1]-y)):
+            decay = 1 / (abs(s*i) ** p + abs(s*j) ** p + 1.0)
+            csum += matrix[x+i,y+j] * decay
+            divider += decay
+  
+    return csum/divider
 
 def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
     """
@@ -122,10 +142,12 @@ def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
     smoothedCounts = 0
     for i in range(row):
         for j in range(column):
-            window  = matrix[max(i-w,0):min(i+w+1,row),max(j-w,0):min(j+w+1,column)]
+            window  = matrix[max(i-w,0):min(i+w+1,row),max(j-w,0):min(j+w+1,column)].flatten()
             if matrix[i,j] > window.mean() + z*window.std():
                 newVal = powerLawSmooth(matrix,(i,j),w,s,p)
+                #newVal = powerLawSmooth(window,( i-max(i-w,0),j-max(j-w,0) ),w,s,p)
                 if newVal < matrix[i,j]:
+                    print i,j,matrix[i,j],newVal
                     smoothedMatrix[i,j] = newVal
                     smoothedCounts += 1
             #--
