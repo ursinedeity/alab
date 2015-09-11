@@ -82,19 +82,56 @@ def boxplotStats(data):
     lowerFence = Q1 - 1.5*(Q3-Q1)
     return lowerFence,Q1,Q2,Q3,upperFence
   
-def powerLawSmooth(matrix,w=3,s=3,p=3):
+def powerLawSmooth(matrix,target,w=3,s=3,p=3):
     """
         Power law smoothing function
+        Given a matrix and a tuple (x,y), compute the smoothed value of (x,y)
+        Parameters
+        ----------
+        matrix: numpy 2D array
+        target: tuple of (x,y)
+        w:      int of the window size, the smoothing is computed using target +/- w
+        s:      weight of the location deviation
+        p:      power of the location deviation
     """
+    x,y = target
     csum = 0.0
     divider = 0.0
-    for i in range(-w,w+1):
-        for j in range(-w,w+1):
+    for i in range(max(-w,-x),min(w+1,len(matrix)-x)):
+        for j in range(max(-w,-y),min(w+1,len(matrix)-y)):
             decay = 1 / (abs(s*i) ** p + abs(s*j) ** p + 1.0)
-            csum += matrix[w+i,w+j] * decay
+            csum += matrix[x+i,y+j] * decay
+            #print i,j
             divider += decay
   
     return csum/divider
+
+def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
+    """
+        given a block matrix m, inspect whether any elements are above mean+z*sd
+        replace them with the surrounding -w to +w local square window using power law smoothing
+        Parameters:
+        -----------
+        matrix: block matrix in numpy.array
+        w:      int of the window size, the smoothing is computed using target +/- w
+        s:      weight of the location deviation
+        p:      power of the location deviation
+        z:      range of standard deviation
+        
+    """
+    row,column     = matrix.shape
+    smoothedMatrix = np.copy(matrix)
+    for i in range(row):
+        for j in range(column):
+            window  = matrix[max(i-w,0):min(i+w+1,row),max(j-w,0):min(j+w+1,column)]
+            if matrix[i,j] > window.mean() + z*window.std():
+                newVal = powerLawSmooth(matrix,(i,j),w,s,p)
+                if newVal < matrix[i,j]:
+                    smoothedMatrix[i,j] = newVal
+            #--
+        #--
+    #--
+    return smoothedMatrix
 
 def binomialSplit(A,p=0.5):
     """
