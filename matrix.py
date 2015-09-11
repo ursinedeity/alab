@@ -158,6 +158,12 @@ class contactmatrix(object):
             warnings.warn("Method removePoorRegions was done before, use force = True to overwrite it.")
       
     def identifyInterOutliersCutoff(self,N=100):
+        """
+        Identify interchromosome outliers' cutoff
+        Do an N round random choice as the original contact freq distribution and estimate the sample std for every contact freq
+        If the sample std is larger than half of the frequency (contact #), lable this contact frequency as spourious
+        cutoff is set to the number that first consecutive 2 non-spourious frequency from the right side (scan from high frequency to low)
+        """
         if self.applyed('normalization'):
             raise RuntimeError, "Matrix is already normalized, raw matrix is needed."
         intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
@@ -176,12 +182,15 @@ class contactmatrix(object):
         return cutoff
     
     def smoothInterContactByCutoff(self,cutoff,w=3,s=3,p=3,force=False):
+        """
+        given the cutoff, run a power law smoothing for the interchromosome matrix for contacts > cutoff
+        """
         if (not self.applyed('smoothByCutoff')) or force:
             intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
             x, y = np.nonzero(intermask)
             pos  = np.flatnonzero(self.matrix[intermask] > cutoff)
             for i in pos:
-                cnew = alab.utils.powerLawSmooth(self.matrix[ x[i]-w:x[i]+w+1 , y[i]-w:y[i]+w+1 ],w,s,p)
+                cnew = alab.utils.powerLawSmooth(self.matrix[ x[i]-w:x[i]+w+1 , y[i]-w:y[i]+w+1 ],(w,w),w,s,p)
                 print x[i],y[i],self.matrix[x[i],y[i]],'-->',cnew
                 self.matrix[x[i],y[i]] = cnew
                 self.matrix[y[i],x[i]] = cnew
@@ -190,7 +199,7 @@ class contactmatrix(object):
             warnings.warn("Method smoothInterContactByCutoff was done before,cutoff = %d use force = True to overwrite it."\
                             %(self._applyedMethods['smoothByCutoff']))
         
-    
+        
     #========================================================normalization methods
     def krnorm(self,mask = None,force=False,**kwargs):
         """using krnorm balacing the matrix (overwriting the matrix!)
@@ -316,8 +325,44 @@ class contactmatrix(object):
         submatrix._applyedMethods['subMatrix'] = chrom
         return submatrix
     
-  
-  #==============================================================Probabiliy matrix methods
+    #----------------------------------------------------------genome wide smoothing stuff:
+    def smoothGenomeWideHighValue(self,w=3,s=3,p=3,z=5,force=False):
+        """
+        Use power law smoothing function to smooth high spikes in chromosomes blocks
+        Parameters:
+        -----------
+        w: int of the window size, the smoothing is computed using target +/- w
+        s: weight of the location deviation
+        p: power of the location deviation
+        z: range of standard deviation to set cutoff
+        """
+        if self.applyed('subMatrix'):
+            raise RuntimeError, "This is a submatrix, genome wide smoothing cannot be applyed."
+        if (not self.applyed('smoothGenomeWide')) or force:
+            smoothed = 0
+            chrlist = np.unique(self.idx['chrom'])
+            if sum(np.diagonal(self.matrix)) < 1:
+                v0 = np.diagonal(self.matrix,1)
+                v1 = np.append(v0[0],v0)
+                v2 = np.append(v0,v0[-1])
+            for row in range(len(chrlist)):
+                rstart,rend = self.range(chrlist[row])
+                for column in range(row,len(chrlist)):
+                    cstart,cend           = self.range(chrlist[column])
+                    print "Smoothing block (%s,%s)" % (chrlist[row],chrlist[column])
+                    tmpMatrix,no_smoothed = alab.utils.smoothSpikesInBlock(self.matrix[rstart:rend,cstart:cend],w,s,p)
+                    self.matrix[rstart:rend,cstart:cend] = tmpMatrix
+                    self.matrix[cstart:cend,rstart:rend] = tmpMatrix.T
+                    if row == column:
+                        smoothed += no_smoothed
+                    else:
+                        smoothed += 2*no_smoothed
+            self._applyedMethods['smoothByCutoff'] = smoothed
+            print "Genomewide smoothing finished, %d contacts smoothed" % (smoothed)
+        else:
+            warnings.warn("Method smoothGenomeWideHighValue was done before, %d values smoothed. use force = True to overwrite it."\
+                            %(self._applyedMethods['smoothGenomeWide']))
+    #==============================================================Probabiliy matrix methods
     def getDomainMatrix(self,domainChrom,domainStartPos,domainEndPos,rowmask,minSize=1,maxSize=None):
         """
         Return a submatrix defined by domainChrom, domainStartPos, domainEndPos
@@ -350,7 +395,7 @@ class contactmatrix(object):
         newmatrix = np.delete(np.delete(newmatrix,maskloc,axis=0),maskloc,axis=1)
         return newmatrix
   
-    def getfmax(self,method = 'UF',genome=None,resolution=None,minSize=1,maxSize=2000,removeZero=True,boxplotTrim=True):
+    def getfmax(self,method = 'UF',minSize=1,maxSize=2000,removeZero=True,boxplotTrim=True,includeDiagonal=False):
         """
         calculate fmax based on different methods
         Parameters:
@@ -359,15 +404,16 @@ class contactmatrix(object):
                 UF #uniform fmax
         
         """
+        if self.applyed('subMatrix'):
+            raise RuntimeError, "This is a submatrix, genome wide fmax cannot be applyed."
         if self.applyed('probabilityMatrix'):
             raise RuntimeError, "This is already a probability matrix!"
-        self.__checkGenomeResolution(genome,resolution)
-        genomedb = alab.utils.genome(self.genome,usechr=['#','X'])
+
         fmax = None
     
         if method == 'NM':#method neighbour max
             fmax = np.zeros(len(self))
-            for chrom in genomedb.info['chrom']:
+            for chrom in np.unique(self.idx['chrom']):
                 cstart, cend = self.range(chrom) #cend is increased by one
                 for i in range(cstart+1,cend-1):
                     fmax[i] = min(self.matrix[i,i+1],self.matrix[i,i-1])
@@ -382,13 +428,17 @@ class contactmatrix(object):
             #Get all intra domain interactions (upper triangle)
             upperTriangle = []
             skipDomains = 0
+            offdiag = 1
+            if includeDiagonal:
+                offdiag = 0
+            
             rowmask = np.flatnonzero(self.rowsum() == 0) #removed bins
             for domainRec in self.domainIdx:
                 domainMatrix = self.getDomainMatrix(domainRec['chrom'],domainRec['start'],domainRec['end'],rowmask,minSize,maxSize)#domain matrix, eliminating domains that are larger than 20 bins
                 if domainMatrix is None:
                     skipDomains += 1
                     continue
-                upperTriangle.extend(domainMatrix[np.triu_indices(len(domainMatrix))])#get the upper triangle
+                upperTriangle.extend(domainMatrix[np.triu_indices(len(domainMatrix),offdiag)])#get the upper triangle
             #--------scaning finished
             print "%d domains are scanned, %d domains are eliminated." % (len(self.domainIdx),skipDomains)
             upperTriangle = np.array(upperTriangle)
@@ -457,6 +507,8 @@ class contactmatrix(object):
             top: int 0<top<100
                 the top percentage to calculate the mean, top=10 means top 10% of the subdomain matrix
         """
+        if self.applyed('domainLevel'):
+            raise RuntimeError, "This is already a domain level matrix!"
         if not hasattr(self,"domainIdx"):
             raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
         from numutils import generateSummaryMatrix
@@ -539,21 +591,16 @@ class contactmatrix(object):
                 line = line,
                 **kwargs)
         
-    def plotHiCscoreVSDistance(self,figurename=None,genome=None,resolution=None,background=False,**kwargs):
+    def plotHiCscoreVSDistance(self,figurename=None,background=False,**kwargs):
         """
         plot distal ratio for intra chromosomes
         Parameters:
         -----------
-        genome: str
-            if no genome info found along with the matrix, genome parameter must be specified
-            hg/mm9..
         """
-        self.__checkGenomeResolution(genome,resolution)
         
-        genomedb = alab.utils.genome(self.genome,usechr=['#','X'])
         TotalSums   = []
         TotalCounts = []
-        for chrom in genomedb.info['chrom']:
+        for chrom in np.unique(self.idx['chrom']):
             tmpMatrix = self.makeIntraMatrix(chrom)
             sums, counts = tmpMatrix.diagnorm(norm=False)[1:3] #skip the division step
             TotalSums   = alab.utils.listadd(TotalSums,sums)
