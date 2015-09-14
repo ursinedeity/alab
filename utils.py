@@ -147,7 +147,7 @@ def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
                 newVal = powerLawSmooth(matrix,(i,j),w,s,p)
                 #newVal = powerLawSmooth(window,( i-max(i-w,0),j-max(j-w,0) ),w,s,p)
                 if newVal < matrix[i,j]:
-                    print i,j,matrix[i,j],newVal
+                    #print i,j,matrix[i,j],newVal
                     smoothedMatrix[i,j] = newVal
                     smoothedCounts += 1
             #--

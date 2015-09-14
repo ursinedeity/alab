@@ -377,7 +377,7 @@ class contactmatrix(object):
                         smoothed += smoothedCounts
                     else:
                         smoothed += 2*smoothedCounts
-            self._applyedMethods['smoothByCutoff'] = smoothed
+            self._applyedMethods['smoothGenomeWide'] = smoothed
             print "Genomewide smoothing finished, %d contacts smoothed" % (smoothed)
         else:
             warnings.warn("Method smoothGenomeWideHighValue was done before, %d values smoothed. use force = True to overwrite it."\
