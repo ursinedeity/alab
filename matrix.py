@@ -415,14 +415,14 @@ class contactmatrix(object):
         newmatrix = np.delete(np.delete(newmatrix,maskloc,axis=0),maskloc,axis=1)
         return newmatrix
   
-    def getfmax(self,method = 'UF',minSize=1,maxSize=2000,removeZero=True,boxplotTrim=True,includeDiagonal=False):
+    def getfmax(self,method = 'UF',minSize=1,maxSize=2000,removeZero=False,boxplotTrim=False,includeDiagonal=False,target='median'):
         """
         calculate fmax based on different methods
         Parameters:
         -----------
         method: NM #neighbouring max
                 UF #uniform fmax
-        
+        target: 'mean'/'median'
         """
         if self.applyed('subMatrix'):
             raise RuntimeError, "This is a submatrix, genome wide fmax cannot be applyed."
@@ -451,6 +451,7 @@ class contactmatrix(object):
             offdiag = 1
             if includeDiagonal:
                 offdiag = 0
+                print "Including Diagonals"
             
             rowmask = np.flatnonzero(self.rowsum() == 0) #removed bins
             for domainRec in self.domainIdx:
@@ -465,14 +466,21 @@ class contactmatrix(object):
             if removeZero:
                 print "Removing zeros"
                 upperTriangle = upperTriangle[upperTriangle > 0]
+            lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(upperTriangle)#get quartiles and fence
+            print lowerFence,Q1,Q2,Q3,upperFence
             if boxplotTrim:
                 print "Trimming outliers"
-                lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(upperTriangle)#get quartiles and fence
                 upperTriangle = upperTriangle[(upperTriangle > lowerFence) & (upperTriangle < upperFence)] #trim to better range
-        
-            fmax = upperTriangle.mean()#get mean
+                lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(upperTriangle)#get quartiles and fence
+                print lowerFence,Q1,Q2,Q3,upperFence
+            if target == "median":
+                fmax = Q2#get median
+            elif target == "mean":
+                fmax = upperTriangle.mean()#get mean
+            else:
+                raise RuntimeError, "target take only 'median' or 'mean' method"
         else:
-            pass
+            raise RuntimeError, "Please use legal method parameters:'NM' or 'UF'!"
         return fmax
     
     #-----------------------use fmax to get prob matrix
