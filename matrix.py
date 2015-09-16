@@ -25,7 +25,6 @@ import os.path
 import re
 import h5py
 import copy
-import time
 import cPickle
 import warnings
 from alab.plots import plotxy, plotmatrix, histogram
@@ -345,21 +344,7 @@ class contactmatrix(object):
         return submatrix
     
     #----------------------------------------------------------genome wide smoothing stuff:
-    def _smoothingsubthreading(self,tasklist,w=3,s=3,p=3,z=5):
-        """
-        subtask for multiple threads
-        """
-        for task in tasklist:
-            time.sleep(0)
-            print "Smoothing block (%s,%s) started" % (task[0],task[1])
-            rstart,rend = task[2]
-            cstart,cend = task[3]
-            tmpMatrix,smoothedCounts = alab.utils.smoothSpikesInBlock(self.matrix[rstart:rend,cstart:cend],w,s,p,z)
-            self.matrix[rstart:rend,cstart:cend] = tmpMatrix
-            self.matrix[cstart:cend,rstart:rend] = tmpMatrix.T
-            print "Smoothing block (%s,%s) finished, %d" % (task[0],task[1],smoothedCounts)
-         
-    def smoothGenomeWideHighValue(self,w=3,s=3,p=3,z=5,threads=1,force=False):
+    def smoothGenomeWideHighValue(self,w=3,s=3,p=3,z=5,force=False):
         """
         Use power law smoothing function to smooth high spikes in chromosomes blocks
         Parameters:
@@ -369,7 +354,6 @@ class contactmatrix(object):
         p: power of the location deviation
         z: range of standard deviation to set cutoff
         """
-        import threading
         if self.applyed('subMatrix'):
             raise RuntimeError, "This is a submatrix, genome wide smoothing cannot be applyed."
         if (not self.applyed('smoothGenomeWide')) or force:
@@ -381,30 +365,18 @@ class contactmatrix(object):
                 v2 = np.append(v0,v0[-1])
                 np.fill_diagonal(self.matrix,v1+v2)
                 #replace 0 with large number so most likely the neighborhood of diagonal are not smoothed
-            tasklist = []
-            for ith in range(threads):
-                tasklist.append([]) #initializing tasklists for each thread
-            ith = 0
             for row in range(len(chrlist)):
                 rstart,rend = self.range(chrlist[row])
                 for column in range(row,len(chrlist)):
                     cstart,cend           = self.range(chrlist[column])
-                    tasklist[ith].append([chrlist[row],chrlist[column],(rstart,rend),(cstart,cend)])
-                    ith += 1
-                    if ith >= threads:
-                        ith = 0
-                #--
-            #--
-            for task in tasklist:
-                print task
-            threadpool = []
-            for ith in range(threads):
-                t = threading.Thread(target = self._smoothingsubthreading,args=(tasklist[ith],w,s,p,z))
-                threadpool.append(t)
-            for t in threadpool:
-                t.start()
-            for t in threadpool:
-                threading.Thread.join(t)
+                    print "Smoothing block (%s,%s)" % (chrlist[row],chrlist[column])
+                    tmpMatrix,smoothedCounts = alab.utils.smoothSpikesInBlock(self.matrix[rstart:rend,cstart:cend],w,s,p,z)
+                    self.matrix[rstart:rend,cstart:cend] = tmpMatrix
+                    self.matrix[cstart:cend,rstart:rend] = tmpMatrix.T
+                    if row == column:
+                        smoothed += smoothedCounts
+                    else:
+                        smoothed += 2*smoothedCounts
             self._applyedMethods['smoothGenomeWide'] = smoothed
             print "Genomewide smoothing finished, %d contacts smoothed" % (smoothed)
         else:
