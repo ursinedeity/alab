@@ -377,11 +377,11 @@ class contactmatrix(object):
                         smoothed += smoothedCounts
                     else:
                         smoothed += 2*smoothedCounts
-            self._applyedMethods['smoothGenomeWide'] = smoothed
+            self._applyedMethods['smoothGenomeWide'] = (smoothed,"w=%d,s=%d,p=%d,z=%d" % (w,s,p,z))
             print "Genomewide smoothing finished, %d contacts smoothed" % (smoothed)
         else:
-            warnings.warn("Method smoothGenomeWideHighValue was done before, %d values smoothed. use force = True to overwrite it."\
-                            %(self._applyedMethods['smoothGenomeWide']))
+            warnings.warn("Method smoothGenomeWideHighValue was done before, %s %d values smoothed. use force = True to overwrite it."\
+                            %(self._applyedMethods['smoothGenomeWide'][1],self._applyedMethods['smoothGenomeWide'][0]))
     #==============================================================Probabiliy matrix methods
     def getDomainMatrix(self,domainChrom,domainStartPos,domainEndPos,rowmask,minSize=1,maxSize=None):
         """
