@@ -29,6 +29,7 @@ import IMP.core
 import IMP.container
 import IMP.algebra
 
+#-------------------consecutive bead restraints --------------------------
 def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
     """
         get distance upper bound restraint to bead1 and bead2
@@ -108,7 +109,20 @@ def addConsecutiveBeadRestraints(model,chain,probmat,beadrad,lowprob=0.1):
     #-------
     
     return consecRestraints
+#-----------------------------end consecutive bead restraints
 
+#-----------------------------chromosome territory functions
+
+#-----------------------------end chromosome terriory
+
+#-----------------------------modeling steps
+def cgstep(model,step):
+    o = IMP.core.ConjugateGradients(model)
+    s = o.optimize(step)
+    #print 'CG',step,'steps done @',datetime.datetime.now()
+    return s
+
+#-----------------------------end modeling steps
 
         
         
