@@ -129,13 +129,13 @@ def condenseChromosome(chain, probmat, genome, rchrs, rrange=0.5):
     for chrom in genome.info['chrom']:
         i += 1
         #find centromere
-        cenbead = np.flatnonzero((prob.idx['chrom'] == chrom) & (prob.idx['flag'] == 'CEN'))[0]
+        cenbead = np.flatnonzero((probmat.idx['chrom'] == chrom) & (probmat.idx['flag'] == 'CEN'))[0]
         p0A=IMP.core.XYZ(chain.get_particles()[cenbead]) #fetch indexes
         p0B=IMP.core.XYZ(chain.get_particles()[cenbead+nbead])
         coorA = p0A.get_coordinates()
         coorB = p0B.get_coordinates()
         rlimit = rchrs[i]*rrange
-        for j in np.flatnonzero(prob.idx['chrom'] == chrom):
+        for j in np.flatnonzero(probmat.idx['chrom'] == chrom):
             p1A=IMP.core.XYZ(chain.get_particles()[j])
             p1B=IMP.core.XYZ(chain.get_particles()[j+nbead])
             dx=(2*random.random()-1)*rlimit
