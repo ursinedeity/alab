@@ -65,7 +65,7 @@ def consecutiveDistanceByProbability(r1,r2,p,xcontact=2):
         d = 100*(r1+r2) # just a big number
     return d-r1-r2 # surface to surface distance
 
-def addConsecutiveBeadRestraints(model,chain,probmat,beadrad,contactRange=1,lowprob=0.1):
+def ConsecutiveBeadRestraints(model,chain,probmat,beadrad,contactRange=1,lowprob=0.1):
     """
         calculate distance constraints to consecutive beads
         Parameters:
