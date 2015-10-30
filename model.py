@@ -111,19 +111,18 @@ def consecutiveBeadRestraints(model,chain,probmat,beadrad,contactRange=1,lowprob
     #-------
     
     return consecRestraints
-#-----------------------------end consecutive bead restraints
-
+#=============================end consecutive bead restraints
 #-----------------------------chromosome territory functions
 def CondenseChromosome(chain, probmat, genome, rchrs, rrange=0.5):
     """
-    Collapse chains around centromere beads
-    parameters:
-    -----------
-    chain:     IMP.container.ListSingletonContainer class
-    probmat:   alab.matrix.contactmatrix class for probablility matrix
-    genome:    alab.utils.genome class, containing genome information
-    rchrs:     chromosome territory radius
-    rrange:    scale parameter in [0,1] for the radius limit 
+        Collapse chains around centromere beads
+        parameters:
+        -----------
+        chain:     IMP.container.ListSingletonContainer class
+        probmat:   alab.matrix.contactmatrix class for probablility matrix
+        genome:    alab.utils.genome class, containing genome information
+        rchrs:     chromosome territory radius
+        rrange:    scale parameter in [0,1] for the radius limit
     """
     import random
     nbead = len(probmat)
@@ -158,9 +157,62 @@ def CondenseChromosome(chain, probmat, genome, rchrs, rrange=0.5):
             p1B.set_coordinates(randB) #placed nearby cen
         #--
     #--
+#=============================end chromosome terriory
+#-----------------------------probmat restraints
+def minPairRestraints(model,chain,bpair,dist,minnum,kspring = 1):
+    """
+        Return restraint decorater of min pair restraints
+        for minnum out of bpairs are satisfied 
+        Parameters:
+        -----------
+        model:       IMP.Model class
+        chain:       IMP.container.ListSingletonContainer class
+        bpair:       tuple list of contact pair candidates
+        upperdist:   distance upperbound for contact
+        minnum:      minimun number of pairs required to satisify
+        contactRange:scale of (r1+r2) where a contact is defined   
+    """
+    ambi = IMP.container.ListPairContainer(model)
+    for pair in bpair:
+        p0 = chain.get_particles()[p[0]]
+        p1 = chain.get_particles()[p[1]]
+        pair = IMP.ParticlePair(p0,p1)
+        ambi.add_particle_pair(pair)
+    ds = IMP.core.SphereDistancePairScore(IMP.core.HarmonicUpperBound(dist,kspring))
+    minpr = IMP.container.MinimumPairRestraint(ds,ambi,minnum)
+    return minpr
 
-
-#-----------------------------end chromosome terriory
+def fmaxRestraints(model,chain,probmat,beadrad,contactRange):
+    """
+        return restraints list for prob=1.0
+        parameters:
+        -----------
+        model:       IMP.Model class
+        chain:       IMP.container.ListSingletonContainer class
+        probmat:     alab.matrix.contactmatrix class for probablility matrix
+        beadrad:     list like, radius of each bead
+        contactRange:scale of (r1+r2) where a contact is defined
+    """
+    fmaxrs = []
+    nbead = len(probmat)
+    for i in range(nbead):
+        for j in range(i+1,nbead):
+            if probmat.matrix[i,j] <= 0.999:
+                continue
+            if probmat.idx[i]['chrom'] == probmat.idx[j]['chrom']: #intra
+                if j-i > 1:
+                    rs1 = beadDistanceRestraint(model,chain,i,j,contactRange*(beadrad[i]+beadrad[j]))
+                    rs2 = beadDistanceRestraint(model,chain,i+nbead,j+nbead,contactRange*(beadrad[i]+beadrad[j]))
+                    fmaxrs.append(rs1)
+                    fmaxrs.append(rs2)
+            else: #inter
+                bpair = [(i,j),(i,j+nbead),(i+nbead,j),(i+nbead,j+nbead)] #bead pair
+                minprrs = minPairRestraints(model,chain,bpair,contactRange*(beadrad[i]+beadrad[j]),minnum=2)
+                fmaxrs.append(minprrs)
+            #--
+        #--
+    #--
+#=============================end probmat restraints
 
 #-----------------------------modeling steps
 def cgstep(model,step):
@@ -168,8 +220,7 @@ def cgstep(model,step):
     s = o.optimize(step)
     #print 'CG',step,'steps done @',datetime.datetime.now()
     return s
-
-#-----------------------------end modeling steps
+#=============================end modeling steps
 
         
         
