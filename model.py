@@ -112,6 +112,51 @@ def addConsecutiveBeadRestraints(model,chain,probmat,beadrad,lowprob=0.1):
 #-----------------------------end consecutive bead restraints
 
 #-----------------------------chromosome territory functions
+def condenseChromosome(chain, probmat, genome, rchrs, rrange=0.5):
+    """
+    Collapse chains around centromere beads
+    parameters:
+    -----------
+    chain:     IMP.container.ListSingletonContainer class
+    probmat:   alab.matrix.contactmatrix class for probablility matrix
+    genome:    alab.utils.genome class, containing genome information
+    rchrs:     chromosome territory radius
+    rrange:    scale parameter in [0,1] for the radius limit 
+    """
+    import random
+    nbead = len(probmat)
+    i = -1
+    for chrom in genome.info['chrom']:
+        i += 1
+        #find centromere
+        cenbead = np.flatnonzero((prob.idx['chrom'] == chrom) & (prob.idx['flag'] == 'CEN'))[0]
+        p0A=IMP.core.XYZ(chain.get_particles()[cenbead]) #fetch indexes
+        p0B=IMP.core.XYZ(chain.get_particles()[cenbead+nbead])
+        coorA = p0A.get_coordinates()
+        coorB = p0B.get_coordinates()
+        rlimit = rchrs[i]*rrange
+        for j in np.flatnonzero(prob.idx['chrom'] == chrom):
+            p1A=IMP.core.XYZ(chain.get_particles()[j])
+            p1B=IMP.core.XYZ(chain.get_particles()[j+nbead])
+            dx=(2*random.random()-1)*rlimit
+            dy=(2*random.random()-1)*rlimit
+            dz=(2*random.random()-1)*rlimit
+            randA = coorA
+            randA[0] += dx
+            randA[1] += dy
+            randA[2] += dz
+            dx=(2*random.random()-1)*rlimit
+            dy=(2*random.random()-1)*rlimit
+            dz=(2*random.random()-1)*rlimit
+            randB = coorB
+            randB[0] += dx
+            randB[1] += dy
+            randB[2] += dz
+            p1A.set_coordinates(randA) #placed nearby cen
+            p1B.set_coordinates(randB) #placed nearby cen
+        #--
+    #--
+
 
 #-----------------------------end chromosome terriory
 
