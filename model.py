@@ -29,7 +29,7 @@ import IMP.core
 import IMP.container
 import IMP.algebra
 
-#-------------------consecutive bead restraints --------------------------
+
 def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
     """
         get distance upper bound restraint to bead1 and bead2
@@ -47,6 +47,7 @@ def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
     pr = IMP.core.PairRestraint(model,ds,(chain.get_particles()[bead1],chain.get_particles()[bead2]),restraintName)
     return pr
 
+#-------------------consecutive bead restraints --------------------------
 def consecutiveDistanceByProbability(r1,r2,p,xcontact=2):
     """
         Upper bound distance constraints for consecutive domains
@@ -64,7 +65,7 @@ def consecutiveDistanceByProbability(r1,r2,p,xcontact=2):
         d = 100*(r1+r2) # just a big number
     return d-r1-r2 # surface to surface distance
 
-def addConsecutiveBeadRestraints(model,chain,probmat,beadrad,lowprob=0.1):
+def addConsecutiveBeadRestraints(model,chain,probmat,beadrad,contactRange=1,lowprob=0.1):
     """
         calculate distance constraints to consecutive beads
         Parameters:
@@ -73,6 +74,7 @@ def addConsecutiveBeadRestraints(model,chain,probmat,beadrad,lowprob=0.1):
         chain:      IMP.container.ListSingletonContainer class
         probmat:    alab.matrix.contactmatrix class for probablility matrix
         beadrad:    list like, radius of each bead
+        contactRange scale of (r1+r2) where a contact is defined
         lowprob:    Min probility for consecutive beads
     """
     consecRestraints = []
@@ -85,7 +87,7 @@ def addConsecutiveBeadRestraints(model,chain,probmat,beadrad,lowprob=0.1):
         b3 = b1 + nbead
         b4 = b2 + nbead
         #calculate upper bound for consecutive domains
-        consecDist = consecutiveDistanceByProbability(beadrad[b1],beadrad[b2],p)
+        consecDist = consecutiveDistanceByProbability(beadrad[b1],beadrad[b2],p,contactRange+1)
            
         # set k = 10 to be strong interaction
         rs1 = beadDistanceRestraint(model,chain,b1,b2,consecDist,kspring=10) 
@@ -100,7 +102,7 @@ def addConsecutiveBeadRestraints(model,chain,probmat,beadrad,lowprob=0.1):
             b1 = i-1;b2 = i+1
             b3 = b1 + nbead
             b4 = b2 + nbead
-            consecDist = consecutiveDistanceByProbability(beadrad[b1],beadrad[b2],p)
+            consecDist = consecutiveDistanceByProbability(beadrad[b1],beadrad[b2],p,contactRange+1)
             rs1 = beadDistanceRestraint(model,chain,b1,b2,consecDist,kspring=10) 
             rs2 = beadDistanceRestraint(model,chain,b3,b4,consecDist,kspring=10) 
             consecRestraints.append(rs1)
