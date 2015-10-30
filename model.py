@@ -42,7 +42,7 @@ def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
         dist:       distance upper bound
         kspring:    harmonic constant k
     """
-    restraintName = "Consecutive Bead (%d,%d):%f" % (bead1,bead2,dist)
+    restraintName = "Bead (%d,%d):%f k = %f" % (bead1,bead2,dist,kspring)
     ds = IMP.core.SphereDistancePairScore(IMP.core.HarmonicUpperBound(dist,kspring))
     pr = IMP.core.PairRestraint(model,ds,(chain.get_particles()[bead1],chain.get_particles()[bead2]),restraintName)
     return pr
