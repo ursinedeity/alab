@@ -218,22 +218,29 @@ def fmaxRestraints(model,chain,probmat,beadrad,contactRange):
 #=============================end probmat restraints
 
 #-----------------------------modeling steps
-def cgstep(model,step):
+def cgstep(model,sf,step):
+    """
+        perform conjugate gradient on model using scoring function sf
+    """
     o = IMP.core.ConjugateGradients(model)
+    o.set_scoring_function(sf)
+    o.set_log_level(IMP.SILENT)
     s = o.optimize(step)
     #print 'CG',step,'steps done @',datetime.datetime.now()
     return s
 
-def mdstep(model,chain,t,step):
+def mdstep(model,chain,sf,t,step):
     xyzr = chain.get_particles()
     o    = IMP.atom.MolecularDynamics(model)
+    o.set_scoring_function(sf)
+    o.set_log_level(IMP.SILENT)
     md   = IMP.atom.VelocityScalingOptimizerState(model,xyzr,t)
     o.add_optimizer_state(md)
     s    = o.optimize(step)
     o.remove_optimizer_state(md)
     return s
 
-def SimulatedAnnealing(model,chain,hot,cold,nc=10,nstep=500):
+def SimulatedAnnealing(model,chain,sf,hot,cold,nc=10,nstep=500):
     """
         perform a cycle of simulated annealing from hot to cold
     """
@@ -241,11 +248,11 @@ def SimulatedAnnealing(model,chain,hot,cold,nc=10,nstep=500):
     dt = (hot-cold)/nc
     for i in range(nc):
         t = hot-dt*i
-        mdstep(model,chain,t,nstep)
-        print "      Temp=%s Step=%s Time=%s"%(t,nstep,timespend(t0))
-    mdstep(model,chain,cold,nstep)
-    print "      Temp=%s Step=%s Time=%s"%(cold,nstep,timespend(t0))
-    cgstep(model,100)
+        mdstep(model,chain,sf,t,nstep)
+        print "      Temp=%s Step=%s Time=%s"%(t,nstep,alab.utils.timespend(t0))
+    mdstep(model,chain,sf,cold,nstep)
+    print "      Temp=%s Step=%s Time=%s"%(cold,nstep,alab.utils.timespend(t0))
+    cgstep(model,sf,100)
 #=============================end modeling steps
 
         
