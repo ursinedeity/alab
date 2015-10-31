@@ -28,7 +28,7 @@ import IMP
 import IMP.core
 import IMP.container
 import IMP.algebra
-
+import IMP.atom
 
 def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
     """
@@ -173,11 +173,11 @@ def minPairRestraints(model,chain,bpair,dist,minnum,kspring = 1):
         contactRange:scale of (r1+r2) where a contact is defined   
     """
     ambi = IMP.container.ListPairContainer(model)
-    for pair in bpair:
+    for p in bpair:
         p0 = chain.get_particles()[p[0]]
         p1 = chain.get_particles()[p[1]]
         pair = IMP.ParticlePair(p0,p1)
-        ambi.add_particle_pair(pair)
+        ambi.add(pair)
     ds = IMP.core.SphereDistancePairScore(IMP.core.HarmonicUpperBound(dist,kspring))
     minpr = IMP.container.MinimumPairRestraint(ds,ambi,minnum)
     return minpr
@@ -212,6 +212,7 @@ def fmaxRestraints(model,chain,probmat,beadrad,contactRange):
             #--
         #--
     #--
+    return fmaxrs
 #=============================end probmat restraints
 
 #-----------------------------modeling steps
@@ -220,6 +221,16 @@ def cgstep(model,step):
     s = o.optimize(step)
     #print 'CG',step,'steps done @',datetime.datetime.now()
     return s
+
+def mdstep(model,t,step):
+    xyzr = chain.get_particles()
+    o    = IMP.atom.MolecularDynamics(model)
+    md   = IMP.atom.VelocityScalingOptimizerState(model,xyzr,t)
+    o.add_optimizer_state(md)
+    s    = o.optimize(step)
+    o.remove_optimizer_state(md)
+    return s
+
 #=============================end modeling steps
 
         
