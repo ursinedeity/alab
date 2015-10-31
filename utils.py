@@ -23,6 +23,7 @@ import os
 import re
 import math
 import scipy
+import time
 import warnings
 import numpy as np
 from collections import namedtuple
@@ -72,6 +73,9 @@ class genome(object):
         return self.info['chrom'][chromNum]
 
 #============================================end genome class
+def timespend(t0):
+    t1 = time.time()
+    return int(round(t1-t0,0))
 
 def listadd(a,b):
     """
