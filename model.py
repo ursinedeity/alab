@@ -224,7 +224,7 @@ def cgstep(model,step):
     #print 'CG',step,'steps done @',datetime.datetime.now()
     return s
 
-def mdstep(model,t,step):
+def mdstep(model,chain,t,step):
     xyzr = chain.get_particles()
     o    = IMP.atom.MolecularDynamics(model)
     md   = IMP.atom.VelocityScalingOptimizerState(model,xyzr,t)
@@ -233,7 +233,7 @@ def mdstep(model,t,step):
     o.remove_optimizer_state(md)
     return s
 
-def SimulatedAnnealing(model,hot,cold,nc=10,nstep=500):
+def SimulatedAnnealing(model,chain,hot,cold,nc=10,nstep=500):
     """
         perform a cycle of simulated annealing from hot to cold
     """
@@ -241,9 +241,9 @@ def SimulatedAnnealing(model,hot,cold,nc=10,nstep=500):
     dt = (hot-cold)/nc
     for i in range(nc):
         t = hot-dt*i
-        mdstep(model,t,nstep)
+        mdstep(model,chain,t,nstep)
         print "      Temp=%s Step=%s Time=%s"%(t,nstep,timespend(t0))
-    mdstep(model,cold,nstep)
+    mdstep(model,chain,cold,nstep)
     print "      Temp=%s Step=%s Time=%s"%(cold,nstep,timespend(t0))
     cgstep(model,100)
 #=============================end modeling steps
