@@ -23,6 +23,8 @@
 
 __author__ = 'N.H.'
 
+import alab.utils
+import time
 import numpy as np
 import IMP
 import IMP.core
@@ -231,6 +233,19 @@ def mdstep(model,t,step):
     o.remove_optimizer_state(md)
     return s
 
+def SimulatedAnnealing(model,hot,cold,nc=10,nstep=500):
+    """
+        perform a cycle of simulated annealing from hot to cold
+    """
+    t0 = time.time()
+    dt = (hot-cold)/nc
+    for i in range(nc):
+        t = hot-dt*i
+        mdstep(model,t,nstep)
+        print "      Temp=%s Step=%s Time=%s"%(t,nstep,timespend(t0))
+    mdstep(model,cold,nstep)
+    print "      Temp=%s Step=%s Time=%s"%(cold,nstep,timespend(t0))
+    cgstep(model,100)
 #=============================end modeling steps
 
         
