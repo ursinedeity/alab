@@ -31,6 +31,7 @@ import IMP.core
 import IMP.container
 import IMP.algebra
 import IMP.atom
+import random
 
 def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
     """
@@ -46,7 +47,7 @@ def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
     """
     restraintName = "Bead (%d,%d):%f k = %f" % (bead1,bead2,dist,kspring)
     ds = IMP.core.SphereDistancePairScore(IMP.core.HarmonicUpperBound(dist,kspring))
-    pr = IMP.core.PairRestraint(model,ds,(chain.get_particles()[bead1],chain.get_particles()[bead2]),restraintName)
+    pr = IMP.core.PairRestraint(model,ds,IMP.ParticlePair(chain.get_indexes()[bead1],chain.get_indexes()[bead2]),restraintName)
     return pr
 
 #-------------------consecutive bead restraints --------------------------
@@ -179,7 +180,7 @@ def minPairRestraints(model,chain,bpair,dist,minnum,kspring = 1):
         p0 = chain.get_particles()[p[0]]
         p1 = chain.get_particles()[p[1]]
         pair = IMP.ParticlePair(p0,p1)
-        ambi.add(pair)
+        ambi.add_particle_pair(pair)
     ds = IMP.core.SphereDistancePairScore(IMP.core.HarmonicUpperBound(dist,kspring))
     minpr = IMP.container.MinimumPairRestraint(ds,ambi,minnum)
     return minpr
@@ -218,18 +219,21 @@ def fmaxRestraints(model,chain,probmat,beadrad,contactRange):
 #=============================end probmat restraints
 
 #-----------------------------modeling steps
-def cgstep(model,sf,step):
+def cgstep(model,sf,step,silent=False):
     """
         perform conjugate gradient on model using scoring function sf
     """
+    t0 = time.time()
     o = IMP.core.ConjugateGradients(model)
     o.set_scoring_function(sf)
     o.set_log_level(IMP.SILENT)
     s = o.optimize(step)
-    #print 'CG',step,'steps done @',datetime.datetime.now()
+    if not silent:
+        print 'CG',step,'steps done @',alab.utils.timespend(t0)
     return s
 
-def mdstep(model,chain,sf,t,step):
+def mdstep(model,chain,sf,t,step,silent=False):
+    t0 = time.time()
     xyzr = chain.get_particles()
     o    = IMP.atom.MolecularDynamics(model)
     o.set_scoring_function(sf)
@@ -238,6 +242,59 @@ def mdstep(model,chain,sf,t,step):
     o.add_optimizer_state(md)
     s    = o.optimize(step)
     o.remove_optimizer_state(md)
+    if not silent:
+        print 'MD',step,'steps done @',alab.utils.timespend(t0)
+    return s
+
+def mdstep_withChromosomeTerriory(model,chain,restraints,probmat,genome,rchrs,t,step):
+    """
+        perform an mdstep with chromosome terriory restraint
+        parameters:
+        -----------
+        chain:     IMP.container.ListSingletonContainer class
+        probmat:   alab.matrix.contactmatrix class for probablility matrix
+        genome:    alab.utils.genome class, containing genome information
+        rchrs:     chromosome territory radius
+        t:         temperature
+        step:      optimization steps
+    """
+    t0 = time.time()
+    nbead = len(probmat)
+    chrContainers=[]
+    for chrom in genome.info['chrom']:
+        chromContainer1=IMP.container.ListSingletonContainer(model,'Container %s s1'%chrom)
+        chromContainer2=IMP.container.ListSingletonContainer(model,'Container %s s2'%chrom)
+        for j in np.flatnonzero(probmat.idx['chrom'] == chrom):
+            p=chain.get_particle(j)
+            chromContainer1.add_particle(p)
+            p=chain.get_particle(j+nbead)
+            chromContainer2.add_particle(p)
+        chrContainers.append(chromContainer1)
+        chrContainers.append(chromContainer2)
+    # set each chromosome to different containers
+    for st in range(step/10):
+        ctRestraintSet = IMP.RestraintSet(model)
+        for i in range(len(genome.info['chrom'])):
+            comxyz = centerOfMass(chrContainers[2*i])
+            comc   = IMP.algebra.Vector3D(comxyz[0],comxyz[1],comxyz[2])
+            ub     = IMP.core.HarmonicUpperBound(rchrs[i],0.2)
+            ss     = IMP.core.DistanceToSingletonScore(ub,comc)
+            ct_rs  = IMP.container.SingletonsRestraint(ss,chrContainers[2*i])
+            
+            ctRestraintSet.add_restraint(ct_rs)
+            #another one
+            comxyz = centerOfMass(chrContainers[2*i+1])
+            comc   = IMP.algebra.Vector3D(comxyz[0],comxyz[1],comxyz[2])
+            ub     = IMP.core.HarmonicUpperBound(rchrs[i],0.2)
+            ss     = IMP.core.DistanceToSingletonScore(ub,comc)
+            ct_rs  = IMP.container.SingletonsRestraint(ss,chrContainers[2*i+1])
+            
+            ctRestraintSet.add_restraint(ct_rs)
+        sf = IMP.core.RestraintsScoringFunction([restraints,ctRestraintSet])
+        s = mdstep(model,chain,sf,t,10,silent=True)
+    #---
+    #s = mdstep(model,chain,sf,t,1000)
+    print 'CT-MD',step,'steps done @',alab.utils.timespend(t0)
     return s
 
 def SimulatedAnnealing(model,chain,sf,hot,cold,nc=10,nstep=500):
@@ -249,12 +306,48 @@ def SimulatedAnnealing(model,chain,sf,hot,cold,nc=10,nstep=500):
     for i in range(nc):
         t = hot-dt*i
         mdstep(model,chain,sf,t,nstep)
-        print "      Temp=%s Step=%s Time=%s"%(t,nstep,alab.utils.timespend(t0))
+        print "      Temp=%d Step=%d Time=%.3f"%(t,nstep,alab.utils.timespend(t0))
     mdstep(model,chain,sf,cold,nstep)
-    print "      Temp=%s Step=%s Time=%s"%(cold,nstep,alab.utils.timespend(t0))
+    print "      Temp=%d Step=%d Time=%.3f"%(cold,nstep,alab.utils.timespend(t0))
     cgstep(model,sf,100)
 #=============================end modeling steps
+def centerOfMass(chain):
+    xyzm = np.zeros((len(chain.get_particles()),4))
+    i = -1
+    for p in chain.get_particles():
+        i += 1
+        pattr = IMP.core.XYZR(p)
+        xyzm[i,3] = pattr.get_radius()**3
+        xyzm[i,0] = pattr.get_x()*xyzm[i,3]
+        xyzm[i,1] = pattr.get_y()*xyzm[i,3]
+        xyzm[i,2] = pattr.get_z()*xyzm[i,3]
+    #---
+    mass = sum(xyzm[:,3])
+    return (sum(xyzm[:,0])/mass,sum(xyzm[:,1])/mass,sum(xyzm[:,2])/mass)
+def savepym(filename,chain):
+    pymfile = IMP.display.PymolWriter(filename)
+    g = IMP.core.XYZRsGeometry(chain)
+    g.set_name('beads')
+    g.set_color(IMP.display.Color(1,1,1))
+    pymfile.add_geometry(g)
 
-        
-        
-          
+def savepym_withChromosome(filename,model,chain,probmat,genome):
+    pymfile = IMP.display.PymolWriter(filename)
+    nbead = len(probmat)
+    for chrom in genome.info['chrom']:
+        chromContainer1=IMP.container.ListSingletonContainer(model,'Container %s s1'%chrom)
+        chromContainer2=IMP.container.ListSingletonContainer(model,'Container %s s2'%chrom)
+        for j in np.flatnonzero(probmat.idx['chrom'] == chrom):
+            p=chain.get_particle(j)
+            chromContainer1.add_particle(p)
+            p=chain.get_particle(j+nbead)
+            chromContainer2.add_particle(p)
+        color = IMP.display.Color(random.random(),random.random(),random.random())
+        g1 = IMP.core.XYZRsGeometry(chromContainer1)
+        g1.set_name(chrom+' s1')
+        g1.set_color(color)
+        pymfile.add_geometry(g1)
+        g2 = IMP.core.XYZRsGeometry(chromContainer2)
+        g2.set_name(chrom+' s2')
+        g2.set_color(color)
+        pymfile.add_geometry(g2)
