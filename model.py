@@ -229,7 +229,7 @@ def cgstep(model,sf,step,silent=False):
     o.set_log_level(IMP.SILENT)
     s = o.optimize(step)
     if not silent:
-        print 'CG',step,'steps done @',alab.utils.timespend(t0)
+        print 'CG',step,'steps done @',alab.utils.timespend(t0),'s'
     return s
 
 def mdstep(model,chain,sf,t,step,silent=False):
@@ -243,7 +243,7 @@ def mdstep(model,chain,sf,t,step,silent=False):
     s    = o.optimize(step)
     o.remove_optimizer_state(md)
     if not silent:
-        print 'MD',step,'steps done @',alab.utils.timespend(t0)
+        print 'MD',step,'steps done @',alab.utils.timespend(t0),'s'
     return s
 
 def mdstep_withChromosomeTerriory(model,chain,restraints,probmat,genome,rchrs,t,step):
@@ -294,7 +294,7 @@ def mdstep_withChromosomeTerriory(model,chain,restraints,probmat,genome,rchrs,t,
         s = mdstep(model,chain,sf,t,10,silent=True)
     #---
     #s = mdstep(model,chain,sf,t,1000)
-    print 'CT-MD',step,'steps done @',alab.utils.timespend(t0)
+    print 'CT-MD',step,'steps done @',alab.utils.timespend(t0),'s'
     return s
 
 def SimulatedAnnealing(model,chain,sf,hot,cold,nc=10,nstep=500):
@@ -306,10 +306,27 @@ def SimulatedAnnealing(model,chain,sf,hot,cold,nc=10,nstep=500):
     for i in range(nc):
         t = hot-dt*i
         mdstep(model,chain,sf,t,nstep)
-        print "      Temp=%d Step=%d Time=%.3f"%(t,nstep,alab.utils.timespend(t0))
+        print "      Temp=%d Step=%d Time=%.1fs"%(t,nstep,alab.utils.timespend(t0))
     mdstep(model,chain,sf,cold,nstep)
-    print "      Temp=%d Step=%d Time=%.3f"%(cold,nstep,alab.utils.timespend(t0))
-    cgstep(model,sf,100)
+    print "      Temp=%d Step=%d Time=%.1fs"%(cold,nstep,alab.utils.timespend(t0))
+    cgstep(model,sf,100,silent=True)
+
+def SimulatedAnnealing_Scored(model,chain,sf,hot,cold,nc=10,nstep=500,lowscore=10):
+    """perform a cycle of simulated annealing but stop if reach low score"""
+    t0 = time.time()
+    dt = (hot-cold)/nc
+    for i in range(nc):
+        t = hot-dt*i
+        mdstep(model,chain,sf,t,nstep)
+        score = cgstep(model,sf,100)
+        print "      Temp=%s Step=%s Score=%s Time=%.1fs"%(t,nstep,int(score),alab.utils.timespend(t0))
+        if score < lowscore:
+            return t,score
+            break
+    mdstep(model,chain,sf,cold,300)
+    print "      Temp=%s Step=%s Score=%s Time=%.1fs"%(cold,nstep,int(score),alab.utils.timespend(t0))
+    score = cgstep(model,sf,100,silent=True)
+    return t,score
 #=============================end modeling steps
 def centerOfMass(chain):
     xyzm = np.zeros((len(chain.get_particles()),4))
