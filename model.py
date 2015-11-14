@@ -32,6 +32,7 @@ import IMP.container
 import IMP.algebra
 import IMP.atom
 import random
+import h5py
 
 def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
     """
@@ -226,7 +227,7 @@ def cgstep(model,sf,step,silent=False):
     t0 = time.time()
     o = IMP.core.ConjugateGradients(model)
     o.set_scoring_function(sf)
-    o.set_log_level(IMP.SILENT)
+    #o.set_log_level(IMP.SILENT)
     s = o.optimize(step)
     if not silent:
         print 'CG',step,'steps done @',alab.utils.timespend(t0),'s'
@@ -237,7 +238,7 @@ def mdstep(model,chain,sf,t,step,silent=False):
     xyzr = chain.get_particles()
     o    = IMP.atom.MolecularDynamics(model)
     o.set_scoring_function(sf)
-    o.set_log_level(IMP.SILENT)
+    #o.set_log_level(IMP.SILENT)
     md   = IMP.atom.VelocityScalingOptimizerState(model,xyzr,t)
     o.add_optimizer_state(md)
     s    = o.optimize(step)
@@ -341,6 +342,14 @@ def centerOfMass(chain):
     #---
     mass = sum(xyzm[:,3])
     return (sum(xyzm[:,0])/mass,sum(xyzm[:,1])/mass,sum(xyzm[:,2])/mass)
+
+#============================i/o
+def readCoordinates(filename,prefix):
+    h5f = h5py.File(filename,'r')
+    xyz = h5f[prefix]['xyz'][:]
+    r   = h5f[prefix]['r'][:]
+    return xyz,r
+    
 def savepym(filename,chain):
     pymfile = IMP.display.PymolWriter(filename)
     g = IMP.core.XYZRsGeometry(chain)
@@ -368,3 +377,23 @@ def savepym_withChromosome(filename,model,chain,probmat,genome):
         g2.set_name(chrom+' s2')
         g2.set_color(color)
         pymfile.add_geometry(g2)
+def saveCoordinates(filename,prefix,chain):
+    if (filename[-4:] != '.hms'):
+        filename += '.hms'
+    xyz = np.zeros((len(chain.get_particles()),3))
+    r   = np.zeros((len(chain.get_particles()),1))
+    i = -1
+    for p in chain.get_particles():
+        i += 1
+        pattr = IMP.core.XYZR(p)
+        xyz[i,0] = pattr.get_x()
+        xyz[i,1] = pattr.get_y()
+        xyz[i,2] = pattr.get_z()
+        r[i] = pattr.get_radius()
+    #---
+    h5f = h5py.File(filename,'a')
+    grp = h5f.create_group(prefix)
+    
+    grp.create_dataset('xyz',data=xyz,compression='gzip')
+    grp.create_dataset('r',data=r,compression='gzip')
+    h5f.close()
