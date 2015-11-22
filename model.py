@@ -46,7 +46,7 @@ def beadDistanceRestraint(model,chain,bead1,bead2,dist,kspring=1):
         dist:       distance upper bound
         kspring:    harmonic constant k
     """
-    restraintName = "Bead (%d,%d):%f k = %f" % (bead1,bead2,dist,kspring)
+    restraintName = "Bead (%d,%d) : %f k = %.1f" % (bead1,bead2,dist,kspring)
     ds = IMP.core.SphereDistancePairScore(IMP.core.HarmonicUpperBound(dist,kspring))
     pr = IMP.core.PairRestraint(model,ds,IMP.ParticlePair(chain.get_indexes()[bead1],chain.get_indexes()[bead2]),restraintName)
     return pr
@@ -177,13 +177,16 @@ def minPairRestraints(model,chain,bpair,dist,minnum,kspring = 1):
         contactRange:scale of (r1+r2) where a contact is defined   
     """
     ambi = IMP.container.ListPairContainer(model)
+    restraintName = "Bead [ "
     for p in bpair:
+        restraintName += "(%d,%d) " % (p[0],p[1])
         p0 = chain.get_particles()[p[0]]
         p1 = chain.get_particles()[p[1]]
         pair = IMP.ParticlePair(p0,p1)
-        ambi.add_particle_pair(pair)
+        ambi.add(pair)
+    restraintName += "] : %f k = %.1f" % (dist,kspring)
     ds = IMP.core.SphereDistancePairScore(IMP.core.HarmonicUpperBound(dist,kspring))
-    minpr = IMP.container.MinimumPairRestraint(ds,ambi,minnum)
+    minpr = IMP.container.MinimumPairRestraint(ds,ambi,minnum,restraintName)
     return minpr
 
 def fmaxRestraints(model,chain,probmat,beadrad,contactRange):
@@ -217,6 +220,51 @@ def fmaxRestraints(model,chain,probmat,beadrad,contactRange):
         #--
     #--
     return fmaxrs
+
+def contactRestraints(model,chain,probmat,beadrad,contactRange,actdist):
+    """
+        return restraints list given actdist list
+        parameters:
+        -----------
+        model:       IMP.Model class
+        chain:       IMP.container.ListSingletonContainer class
+        probmat:     alab.matrix.contactmatrix class for probablility matrix
+        beadrad:     list like, radius of each bead
+        contactRange:scale of (r1+r2) where a contact is defined
+        actdist:     Activation distanct array [i,j,dist]
+    """
+    intracontactrs = []
+    intercontactrs = []
+    nbead = len(probmat)
+    for (b1,b2,dcutoff) in actdist:
+        lastdist1 = surfaceDistance(chain,(b1,b2))
+        lastdist2 = surfaceDistance(chain,(b1+nbead,b2+nbead))
+        if probmat.idx[b1]['chrom'] == probmat.idx[b2]['chrom']: #intra chromosome
+            if max(lastdist1,lastdist2) <= dcutoff:
+                rs1 = beadDistanceRestraint(model,chain,b1,b2,contactRange*(beadrad[b1]+beadrad[b2]))
+                rs2 = beadDistanceRestraint(model,chain,b1+nbead,b2+nbead,contactRange*(beadrad[b1]+beadrad[b2]))
+                intracontactrs.append(rs1)
+                intracontactrs.append(rs2)
+            elif min(lastdist1,lastdist2) <= dcutoff:
+                bpair = [(b1,b2),(b1+nbead,b2+nbead)] #bead pair
+                minprrs = minPairRestraints(model,chain,bpair,contactRange*(beadrad[b1]+beadrad[b2]),minnum=1)
+                intracontactrs.append(minprrs)
+            #else none contact enfored
+        else:
+            lastdist3 = surfaceDistance(chain,(b1,b2+nbead))
+            lastdist4 = surfaceDistance(chain,(b1+nbead,b2))
+            sdists    = sorted([lastdist1,lastdist2,lastdist3,lastdist4])
+            if sdists[1] <= dcutoff:
+                nchoose = 2
+            elif sdists[0] <= dcutoff:
+                nchoose = 1
+            else: #non enforced
+                continue
+            
+            bpair = [(b1,b2),(b1,b2+nbead),(b1+nbead,b2),(b1+nbead,b2+nbead)] #bead pair
+            minprrs = minPairRestraints(model,chain,bpair,contactRange*(beadrad[b1]+beadrad[b2]),minnum=nchoose)
+            intercontactrs.append(minprrs)
+    return intracontactrs, intercontactrs
 #=============================end probmat restraints
 
 #-----------------------------modeling steps
@@ -227,10 +275,10 @@ def cgstep(model,sf,step,silent=False):
     t0 = time.time()
     o = IMP.core.ConjugateGradients(model)
     o.set_scoring_function(sf)
-    #o.set_log_level(IMP.SILENT)
+    #o.set_log_level(IMP.VERBOSE)
     s = o.optimize(step)
     if not silent:
-        print 'CG',step,'steps done @',alab.utils.timespend(t0),'s'
+        print 'CG',step,'steps done @',alab.utils.timespend(t0),'s', 'score = ',s
     return s
 
 def mdstep(model,chain,sf,t,step,silent=False):
@@ -238,13 +286,13 @@ def mdstep(model,chain,sf,t,step,silent=False):
     xyzr = chain.get_particles()
     o    = IMP.atom.MolecularDynamics(model)
     o.set_scoring_function(sf)
-    #o.set_log_level(IMP.SILENT)
+    #o.set_log_level(IMP.VERBOSE)
     md   = IMP.atom.VelocityScalingOptimizerState(model,xyzr,t)
     o.add_optimizer_state(md)
     s    = o.optimize(step)
     o.remove_optimizer_state(md)
     if not silent:
-        print 'MD',step,'steps done @',alab.utils.timespend(t0),'s'
+        print 'MD',step,'steps done @',alab.utils.timespend(t0),'s', 'score = ',s
     return s
 
 def mdstep_withChromosomeTerriory(model,chain,restraints,probmat,genome,rchrs,t,step):
@@ -295,7 +343,7 @@ def mdstep_withChromosomeTerriory(model,chain,restraints,probmat,genome,rchrs,t,
         s = mdstep(model,chain,sf,t,10,silent=True)
     #---
     #s = mdstep(model,chain,sf,t,1000)
-    print 'CT-MD',step,'steps done @',alab.utils.timespend(t0),'s'
+    print 'CT-MD',step,'steps done @',alab.utils.timespend(t0),'s','score = ',s
     return s
 
 def SimulatedAnnealing(model,chain,sf,hot,cold,nc=10,nstep=500):
@@ -306,10 +354,10 @@ def SimulatedAnnealing(model,chain,sf,hot,cold,nc=10,nstep=500):
     dt = (hot-cold)/nc
     for i in range(nc):
         t = hot-dt*i
-        mdstep(model,chain,sf,t,nstep)
-        print "      Temp=%d Step=%d Time=%.1fs"%(t,nstep,alab.utils.timespend(t0))
-    mdstep(model,chain,sf,cold,nstep)
-    print "      Temp=%d Step=%d Time=%.1fs"%(cold,nstep,alab.utils.timespend(t0))
+        s = mdstep(model,chain,sf,t,nstep,silent=True)
+        print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,alab.utils.timespend(t0),s)
+    s= mdstep(model,chain,sf,cold,nstep,silent=True)
+    print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,alab.utils.timespend(t0),s)
     cgstep(model,sf,100,silent=True)
 
 def SimulatedAnnealing_Scored(model,chain,sf,hot,cold,nc=10,nstep=500,lowscore=10):
@@ -318,14 +366,14 @@ def SimulatedAnnealing_Scored(model,chain,sf,hot,cold,nc=10,nstep=500,lowscore=1
     dt = (hot-cold)/nc
     for i in range(nc):
         t = hot-dt*i
-        mdstep(model,chain,sf,t,nstep)
-        score = cgstep(model,sf,100)
-        print "      Temp=%s Step=%s Score=%s Time=%.1fs"%(t,nstep,int(score),alab.utils.timespend(t0))
+        mdstep(model,chain,sf,t,nstep,silent=True)
+        score = cgstep(model,sf,100,silent=True)
+        print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,alab.utils.timespend(t0),score)
         if score < lowscore:
             return t,score
             break
-    mdstep(model,chain,sf,cold,300)
-    print "      Temp=%s Step=%s Score=%s Time=%.1fs"%(cold,nstep,int(score),alab.utils.timespend(t0))
+    mdstep(model,chain,sf,cold,300,silent=True)
+    print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score)
     score = cgstep(model,sf,100,silent=True)
     return t,score
 #=============================end modeling steps
@@ -342,6 +390,27 @@ def centerOfMass(chain):
     #---
     mass = sum(xyzm[:,3])
     return (sum(xyzm[:,0])/mass,sum(xyzm[:,1])/mass,sum(xyzm[:,2])/mass)
+
+def surfaceDistance(chain,pair):
+    '''
+    calculate surface distance for a particle index pair in chain container 
+    '''
+    p1 = chain.get_particles()[pair[0]]
+    p2 = chain.get_particles()[pair[1]]
+    p1attr = IMP.core.XYZR(p1)
+    p2attr = IMP.core.XYZR(p2)
+    x1,y1,z1,r1 = [p1attr.get_x(),p1attr.get_y(),p1attr.get_z(),p1attr.get_radius()]
+    x2,y2,z2,r2 = [p2attr.get_x(),p2attr.get_y(),p2attr.get_z(),p2attr.get_radius()]
+    return np.linalg.norm([x1-x2,y1-y2,z1-z2])-r1-r2
+
+def evaluateRestraints(restraintset):
+    total = 0
+    for rs in restraintset:
+        score = rs.get_score()
+        if round(score) > 0:
+            total += 1
+            print rs,score
+    return total
 
 #============================i/o
 def readCoordinates(filename,prefix):
@@ -392,8 +461,11 @@ def saveCoordinates(filename,prefix,chain):
         r[i] = pattr.get_radius()
     #---
     h5f = h5py.File(filename,'a')
-    grp = h5f.create_group(prefix)
-    
-    grp.create_dataset('xyz',data=xyz,compression='gzip')
-    grp.create_dataset('r',data=r,compression='gzip')
+    if prefix in h5f.keys():
+        h5f[prefix]['xyz'][...] = xyz
+        h5f[prefix]['r'][...]   = r
+    else:
+        grp = h5f.create_group(prefix)
+        grp.create_dataset('xyz',data=xyz,compression='gzip')
+        grp.create_dataset('r',data=r,compression='gzip')
     h5f.close()
