@@ -121,9 +121,9 @@ class tadmodel(object):
         # Set up Nucleus cap  #
         ubnuc = IMP.core.HarmonicUpperBound(self.nucleusRadius,kspring)
         ssnuc = IMP.core.DistanceToSingletonScore(ubnuc,self.center) #center-to-center distance
-        self.nucleusEnvelopRestraint = IMP.container.SingletonsRestraint(ssnuc,self.chain)
-        self.restraints.add_restraint(self.nucleusEnvelopRestraint) #2
-        return self.nucleusEnvelopRestraint
+        self.nucleusEnvelopeRestraint = IMP.container.SingletonsRestraint(ssnuc,self.chain)
+        self.restraints.add_restraint(self.nucleusEnvelopeRestraint) #2
+        return self.nucleusEnvelopeRestraint
     
     def set_consecutiveBeads(self,lowprob=0.1):
         # Setup consecutive bead upper bound constraints
@@ -444,7 +444,7 @@ class tadmodel(object):
         self.logger.debug("Optimization with decreasing NE %s"%(nucrads))
         expanded=False
         self.logger.debug("\t--- Start shrinking ---")
-        self.restraints.remove_restraint(self.nucleusEnvelopRestraint) #will be replaced by temporary
+        self.restraints.remove_restraint(self.nucleusEnvelopeRestraint) #will be replaced by temporary
         for r_nuc in nucrads:
             ubnuc = IMP.core.HarmonicUpperBound(r_nuc,1.0)
             ssnuc = IMP.core.DistanceToSingletonScore(ubnuc,self.center)
@@ -470,7 +470,7 @@ class tadmodel(object):
             #-
         #--
         # Putting back original radius cap  #
-        self.restraints.add_restraint(self.nucleusEnvelopRestraint) #2
+        self.restraints.add_restraint(self.nucleusEnvelopeRestraint) #2
         self.updateScoringFunction()
         temp, score = self.SimulatedAnnealing_Scored(2000,300, nc=2, nstep=1000, lowscore=1)
         self.logger.debug("Recover nucleus %.1f nm at T=%.1f K, score: %.8f"%(self.nucleusRadius,temp,score))
@@ -492,8 +492,13 @@ class tadmodel(object):
         pymfile.add_geometry(g)
 
     def savepym_withChromosome(self,filename):
+        import colorsys
         pymfile = IMP.display.PymolWriter(filename)
+        nchrom  = len(self.genome.info['chrom'])
+        h       = np.array(range(nchrom+1))*2.0/(nchrom+1)/3
+        i       = -1
         for chrom in self.genome.info['chrom']:
+            i += 1
             chromContainer1=IMP.container.ListSingletonContainer(self.model,'Container %s s1'%chrom)
             chromContainer2=IMP.container.ListSingletonContainer(self.model,'Container %s s2'%chrom)
             for j in np.flatnonzero(self.probmat.idx['chrom'] == chrom):
@@ -501,7 +506,8 @@ class tadmodel(object):
                 chromContainer1.add(p)
                 p=self.chain.get_particle(j+self.nbead)
                 chromContainer2.add(p)
-            color = IMP.display.Color(random.random(),random.random(),random.random())
+            chrColor = colorsys.hsv_to_rgb(h[i],0.8,1)
+            color = IMP.display.Color(chrColor[0],chrColor[1],chrColor[2])
             g1 = IMP.core.XYZRsGeometry(chromContainer1)
             g1.set_name(chrom+' s1')
             g1.set_color(color)
@@ -513,11 +519,14 @@ class tadmodel(object):
 
     def saveCoordinates(self,filename,prefix):
         import cPickle
+        import cStringIO
         if (filename[-4:] != '.hms'):
             filename += '.hms'
         log_contents = self._log_capture_string.getvalue()
         self._log_capture_string.close()
         print log_contents
+        pymhandler = cStringIO.StringIO()
+        self.savepym_withChromosome(pymhandler)
         xyz = np.zeros((len(self.chain.get_particles()),3))
         r   = np.zeros((len(self.chain.get_particles()),1))
         i = -1
@@ -535,14 +544,12 @@ class tadmodel(object):
         if not 'idx' in h5f.keys():
             h5f.create_dataset('idx',data = self.probmat.idx,compression='gzip')
         if prefix in h5f.keys():
-            h5f[prefix]['xyz'][...] = xyz
-            h5f[prefix]['r'][...]   = r
-            h5f[prefix]['log'][...] = cPickle.dumps(log_contents)
-        else:
-            grp = h5f.create_group(prefix)
-            grp.create_dataset('xyz',data=xyz,compression='gzip')
-            grp.create_dataset('r',data=r,compression='gzip')
-            grp.create_dataset('log',data=cPickle.dumps(log_contents))
+            del h5f[prefix]
+        grp = h5f.create_group(prefix)
+        grp.create_dataset('xyz',data=xyz,compression='gzip')
+        grp.create_dataset('r',data=r,compression='gzip')
+        grp.create_dataset('log',data=cPickle.dumps(log_contents))
+        grp.create_dataset('pym',data=cPickle.dumps(pymhandler.getvalue()))
         h5f.close()
 #====================================end tadmodel
 
