@@ -288,6 +288,7 @@ def mdstep(model,chain,sf,t,step,silent=False):
     o.set_scoring_function(sf)
     #o.set_log_level(IMP.VERBOSE)
     md   = IMP.atom.VelocityScalingOptimizerState(model,xyzr,t)
+    md.set_period(10)
     o.add_optimizer_state(md)
     s    = o.optimize(step)
     o.remove_optimizer_state(md)

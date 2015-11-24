@@ -428,7 +428,7 @@ class tadmodel(object):
                 return t,score
                 break
         self.mdstep(cold,300,silent=True)
-        score = cgstep(100,silent=True)
+        score = self.cgstep(100,silent=True)
         self.logger.info( "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score))
         return t,score
     
@@ -512,6 +512,7 @@ class tadmodel(object):
             pymfile.add_geometry(g2)
 
     def saveCoordinates(self,filename,prefix):
+        import cPickle
         if (filename[-4:] != '.hms'):
             filename += '.hms'
         log_contents = self._log_capture_string.getvalue()
@@ -529,13 +530,19 @@ class tadmodel(object):
             r[i] = pattr.get_radius()
         #---
         h5f = h5py.File(filename,'a')
+        if not 'genome' in h5f.keys():
+            h5f.create_dataset('genome',data = cPickle.dumps(self.probmat.genome))
+        if not 'idx' in h5f.keys():
+            h5f.create_dataset('idx',data = self.probmat.idx,compression='gzip')
         if prefix in h5f.keys():
             h5f[prefix]['xyz'][...] = xyz
             h5f[prefix]['r'][...]   = r
+            h5f[prefix]['log'][...] = cPickle.dumps(log_contents)
         else:
             grp = h5f.create_group(prefix)
             grp.create_dataset('xyz',data=xyz,compression='gzip')
             grp.create_dataset('r',data=r,compression='gzip')
+            grp.create_dataset('log',data=cPickle.dumps(log_contents))
         h5f.close()
 #====================================end tadmodel
 
