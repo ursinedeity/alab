@@ -491,7 +491,7 @@ class tadmodel(object):
         g.set_color(IMP.display.Color(1,1,1))
         pymfile.add_geometry(g)
 
-    def savepym_withChromosome(self,filename):
+    def savepym_withChromosome(self,filename,s=1,v=1):
         import colorsys
         pymfile = IMP.display.PymolWriter(filename)
         nchrom  = len(self.genome.info['chrom'])
@@ -506,7 +506,7 @@ class tadmodel(object):
                 chromContainer1.add(p)
                 p=self.chain.get_particle(j+self.nbead)
                 chromContainer2.add(p)
-            chrColor = colorsys.hsv_to_rgb(h[i],0.8,1)
+            chrColor = colorsys.hsv_to_rgb(h[i],s,v)
             color = IMP.display.Color(chrColor[0],chrColor[1],chrColor[2])
             g1 = IMP.core.XYZRsGeometry(chromContainer1)
             g1.set_name(chrom+' s1')
@@ -544,12 +544,29 @@ class tadmodel(object):
         if not 'idx' in h5f.keys():
             h5f.create_dataset('idx',data = self.probmat.idx,compression='gzip')
         if prefix in h5f.keys():
-            del h5f[prefix]
-        grp = h5f.create_group(prefix)
-        grp.create_dataset('xyz',data=xyz,compression='gzip')
-        grp.create_dataset('r',data=r,compression='gzip')
-        grp.create_dataset('log',data=cPickle.dumps(log_contents))
-        grp.create_dataset('pym',data=cPickle.dumps(pymhandler.getvalue()))
+            grp = h5f[prefix]
+            if 'xyz' in grp.keys():
+                grp['xyz'][...] = xyz
+            else:
+                grp.create_dataset('xyz',data=xyz,compression='gzip')
+            if 'r' in grp.keys():
+                grp['r'][...] = r
+            else:
+                grp.create_dataset('r',data=r,compression='gzip')
+            if 'log' in grp.keys():
+                grp['log'][...] = cPickle.dumps(log_contents)
+            else:
+                grp.create_dataset('log',data=cPickle.dumps(log_contents))
+            if 'pym' in grp.keys():
+                grp['pym'][...] = cPickle.dumps(pymhandler.getvalue())
+            else:
+                grp.create_dataset('pym',data=cPickle.dumps(pymhandler.getvalue()))
+        else:
+            grp = h5f.create_group(prefix)
+            grp.create_dataset('xyz',data=xyz,compression='gzip')
+            grp.create_dataset('r',data=r,compression='gzip')
+            grp.create_dataset('log',data=cPickle.dumps(log_contents))
+            grp.create_dataset('pym',data=cPickle.dumps(pymhandler.getvalue()))
         h5f.close()
 #====================================end tadmodel
 
