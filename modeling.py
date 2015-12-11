@@ -78,6 +78,7 @@ class tadmodel(object):
         self.model      = IMP.Model()
         self.chain      = IMP.container.ListSingletonContainer(self.model)
         self.restraints = IMP.RestraintSet(self.model)
+        #IMP.set_check_level(IMP.USAGE)
         IMP.set_check_level(IMP.NONE)
         IMP.set_log_level(IMP.SILENT)
         #setup nucleus envelope
@@ -90,6 +91,16 @@ class tadmodel(object):
             self.scoringFunction = IMP.core.RestraintsScoringFunction(restraintset)
         return self.scoringFunction
     
+    def cache_coordinates(self):
+        i = -1
+        for p in self.chain.get_particles():
+            i += 1
+            pattr = IMP.core.XYZR(p)
+            self.xyz[i,0] = pattr.get_x()
+            self.xyz[i,1] = pattr.get_y()
+            self.xyz[i,2] = pattr.get_z()
+            self.r[i]     = pattr.get_radius()
+        #---
     def set_coordinates(self,coordinates=None):
         if coordinates is None:
             randomCoordinates = True
@@ -97,6 +108,8 @@ class tadmodel(object):
             randomCap = IMP.algebra.Sphere3D(self.center, 1.5*self.nucleusRadius)
         else:
             randomCoordinates = False
+        self.xyz = np.zeros((2*self.nbead,3))
+        self.r   = np.zeros((2*self.nbead,1))
         for i in range(2*self.nbead):
             if (randomCoordinates):
                 coor = IMP.algebra.get_random_vector_in(randomCap)
@@ -110,10 +123,11 @@ class tadmodel(object):
             sp  = IMP.core.XYZR.setup_particle(p0,sph)
             sp.set_coordinates_are_optimized(True)
         #-
+        self.cache_coordinates()
     #--
-    def set_excludedVolume(self):
+    def set_excludedVolume(self,ksping=1,slack=10):
         # Set up excluded volume
-        self.excludedVolumeRestraint = IMP.core.ExcludedVolumeRestraint(self.chain)
+        self.excludedVolumeRestraint = IMP.core.ExcludedVolumeRestraint(self.chain,ksping,slack)
         self.restraints.add_restraint(self.excludedVolumeRestraint) #1
         return self.excludedVolumeRestraint 
     
@@ -131,6 +145,7 @@ class tadmodel(object):
         for rs in self.consecutiveBeadRestraints: #3
             self.restraints.add_restraint(rs) 
         self.logger.debug("Total consecutive bead restraints %d"%(len(self.consecutiveBeadRestraints)))
+        print "Total consecutive bead restraints %d"%(len(self.consecutiveBeadRestraints))
         return self.consecutiveBeadRestraints
     
     def set_fmaxRestraints(self,kspring=1):
@@ -138,6 +153,7 @@ class tadmodel(object):
         for rs in self.fmaxRestraints: #4
             self.restraints.add_restraint(rs)
         self.logger.debug("Total fmax restraints %d"% (len(self.fmaxRestraints)))
+        print "Total fmax restraints %d"% (len(self.fmaxRestraints))
         return self.fmaxRestraints
     
     def set_contactRestraints(self,actdist,kspring=1):
@@ -311,7 +327,7 @@ class tadmodel(object):
                     intracontactrs.append(rs2)
                 elif min(lastdist1,lastdist2) <= dcutoff:
                     bpair = [(b1,b2),(b1+self.nbead,b2+self.nbead)] #bead pair
-                    minprrs = self_get_minPairRestraints(bpair,self.contactRange*(self.beadRadius[b1]+self.beadRadius[b2]),minnum=1)
+                    minprrs = self._get_minPairRestraints(bpair,self.contactRange*(self.beadRadius[b1]+self.beadRadius[b2]),minnum=1)
                     intracontactrs.append(minprrs)
                 #else none contact enfored
             else:
@@ -336,24 +352,38 @@ class tadmodel(object):
             perform conjugate gradient on model using scoring function sf
         """
         t0 = time.time()
+        self.cache_coordinates()
         o = IMP.core.ConjugateGradients(self.model)
+        o.set_check_level(IMP.USAGE)
         o.set_scoring_function(self.scoringFunction)
-        s = o.optimize(step)
+        try:
+            s = o.optimize(step)
+        except:
+            #tt = str(np.random.random_integers(1000))+'.txt'
+            #np.savetxt(tt,self.xyz,fmt='%.4f')
+            #print tt
+            #self.cache_coordinates()
+            #np.savetxt(tt+'.af',self.xyz,fmt='%.4f')
+            s = o.optimize(step)
         if not silent:
             self.logger.info('CG %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
+            print 'CG %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
         return s
 
-    def mdstep(self,t,step,silent=False):
+    def mdstep(self,t,step,gamma=0.1,silent=False):
         t0 = time.time()
+        #self.cache_coordinates()
         xyzr = self.chain.get_particles()
         o    = IMP.atom.MolecularDynamics(self.model)
         o.set_scoring_function(self.scoringFunction)
         md   = IMP.atom.VelocityScalingOptimizerState(self.model,xyzr,t)
+        #md   = IMP.atom.LangevinThermostatOptimizerState(self.model,xyzr,t,gamma)
         o.add_optimizer_state(md)
         s    = o.optimize(step)
         o.remove_optimizer_state(md)
         if not silent:
             self.logger.info('MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
+            print 'MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
         return s
     def mdstep_withChromosomeTerritory(self,t,step):
         """
@@ -400,6 +430,7 @@ class tadmodel(object):
         #s = mdstep(model,chain,sf,t,1000)
         self.updateScoringFunction()
         self.logger.info('CT-MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
+        print 'CT-MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
         return s
     def SimulatedAnnealing(self,hot,cold,nc=10,nstep=500):
         """
@@ -411,8 +442,10 @@ class tadmodel(object):
             t = hot-dt*i
             s = self.mdstep(t,nstep,silent=True)
             self.logger.info( "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,alab.utils.timespend(t0),s))
+            print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,alab.utils.timespend(t0),s)
         s= self.mdstep(cold,nstep,silent=True)
         self.logger.info("      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,alab.utils.timespend(t0),s))
+        print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,alab.utils.timespend(t0),s)
         self.cgstep(100,silent=True)
 
     def SimulatedAnnealing_Scored(self,hot,cold,nc=10,nstep=500,lowscore=10):
@@ -424,15 +457,17 @@ class tadmodel(object):
             self.mdstep(t,nstep,silent=True)
             score = self.cgstep(100,silent=True)
             self.logger.info("      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,alab.utils.timespend(t0),score))
+            print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,alab.utils.timespend(t0),score)
             if score < lowscore:
                 return t,score
                 break
         self.mdstep(cold,300,silent=True)
         score = self.cgstep(100,silent=True)
         self.logger.info( "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score))
+        print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score)
         return t,score
     
-    def shrinkingOptimization(self,drange,shrinkScore,minscore,interscale):
+    def shrinkingOptimization(self,drange,shrinkScore,minscore,interScale):
         radStartShrink = int((1+drange)*self.nucleusRadius)
         radEndShrink = int((1-drange)*self.nucleusRadius)
         nucExpand=drange+1.3
@@ -442,8 +477,10 @@ class tadmodel(object):
         nucrads.append(radStartShrink)
         nucrads = sorted(nucrads, reverse=True)
         self.logger.debug("Optimization with decreasing NE %s"%(nucrads))
+        print "Optimization with decreasing NE %s"%(nucrads)
         expanded=False
         self.logger.debug("\t--- Start shrinking ---")
+        print "\t--- Start shrinking ---"
         self.restraints.remove_restraint(self.nucleusEnvelopeRestraint) #will be replaced by temporary
         for r_nuc in nucrads:
             ubnuc = IMP.core.HarmonicUpperBound(r_nuc,1.0)
@@ -451,21 +488,25 @@ class tadmodel(object):
             rnuc = IMP.container.SingletonsRestraint(ssnuc,self.chain)
             
             self.updateScoringFunction([self.restraints,rnuc])
-            temp, score = self.SimulatedAnnealing_Scored(2000,300,nc=2, lowscore=shrinkscore)
+            temp, score = self.SimulatedAnnealing_Scored(2000,300,nc=2, lowscore=shrinkScore)
             score = self.cgstep(500,silent=True)
-            logger.debug("Score optimizing temporary NE %dmm done: %.8f"%(r_nuc,score))
+            self.logger.debug("Score optimizing temporary NE %dmm done: %.8f"%(r_nuc,score))
+            print "Score optimizing temporary NE %dmm done: %.8f"%(r_nuc,score)
             if score > minscore:
                 if expanded == False: #haven't done expansion steps before
                     self.logger.debug("\t    --- Start expanding ---")
+                    print "\t    --- Start expanding ---"
                     ubexpend = IMP.core.HarmonicUpperBound(radExpand,1.0)
                     ssexpend = IMP.core.DistanceToSingletonScore(ubexpend,self.center)
                     rexpend = IMP.container.SingletonsRestraint(ssexpend,self.chain)
                     expanded = True
                     self.updateScoringFunction([self.restraints,rexpend])
-                    temp, score = self.SimulatedAnnealing_Scored(75000,500,nstep=1000, nc=2, lowscore=shrinkscore)
+                    temp, score = self.SimulatedAnnealing_Scored(75000,500,nstep=1000, nc=2, lowscore=shrinkScore)
                     self.logger.debug("\t     ...back to shrinking...")
+                    print "\t     ...back to shrinking..."
                 else:
                     self.logger.debug('\t     Score is still high after expansion: %.8f' %(score))
+                    print '\t     Score is still high after expansion: %.8f' %(score)
                     break
             #-
         #--
@@ -474,6 +515,7 @@ class tadmodel(object):
         self.updateScoringFunction()
         temp, score = self.SimulatedAnnealing_Scored(2000,300, nc=2, nstep=1000, lowscore=1)
         self.logger.debug("Recover nucleus %.1f nm at T=%.1f K, score: %.8f"%(self.nucleusRadius,temp,score))
+        print "Recover nucleus %.1f nm at T=%.1f K, score: %.8f"%(self.nucleusRadius,temp,score)
         return 0
     #==================utils
     def evaluateRestraints(self,restraintset):
@@ -483,6 +525,7 @@ class tadmodel(object):
             if round(score) > 0:
                 total += 1
                 self.logger.warning("%s %f" % (rs,score))
+                print "%s %f" % (rs,score)
         return total
     def savepym(self,filename):
         pymfile = IMP.display.PymolWriter(filename)
@@ -523,21 +566,22 @@ class tadmodel(object):
         if (filename[-4:] != '.hms'):
             filename += '.hms'
         log_contents = self._log_capture_string.getvalue()
-        self._log_capture_string.close()
-        print log_contents
+        #self._log_capture_string.close()
+        #print log_contents
         pymhandler = cStringIO.StringIO()
         self.savepym_withChromosome(pymhandler)
-        xyz = np.zeros((len(self.chain.get_particles()),3))
-        r   = np.zeros((len(self.chain.get_particles()),1))
-        i = -1
-        for p in self.chain.get_particles():
-            i += 1
-            pattr = IMP.core.XYZR(p)
-            xyz[i,0] = pattr.get_x()
-            xyz[i,1] = pattr.get_y()
-            xyz[i,2] = pattr.get_z()
-            r[i] = pattr.get_radius()
+        #xyz = np.zeros((len(self.chain.get_particles()),3))
+        #r   = np.zeros((len(self.chain.get_particles()),1))
+        #i = -1
+        #for p in self.chain.get_particles():
+            #i += 1
+            #pattr = IMP.core.XYZR(p)
+            #xyz[i,0] = pattr.get_x()
+            #xyz[i,1] = pattr.get_y()
+            #xyz[i,2] = pattr.get_z()
+            #r[i] = pattr.get_radius()
         #---
+        self.cache_coordinates()
         h5f = h5py.File(filename,'a')
         if not 'genome' in h5f.keys():
             h5f.create_dataset('genome',data = cPickle.dumps(self.probmat.genome))
@@ -546,13 +590,13 @@ class tadmodel(object):
         if prefix in h5f.keys():
             grp = h5f[prefix]
             if 'xyz' in grp.keys():
-                grp['xyz'][...] = xyz
+                grp['xyz'][...] = self.xyz
             else:
-                grp.create_dataset('xyz',data=xyz,compression='gzip')
+                grp.create_dataset('xyz',data=self.xyz,compression='gzip')
             if 'r' in grp.keys():
-                grp['r'][...] = r
+                grp['r'][...] = self.r
             else:
-                grp.create_dataset('r',data=r,compression='gzip')
+                grp.create_dataset('r',data=self.r,compression='gzip')
             if 'log' in grp.keys():
                 grp['log'][...] = cPickle.dumps(log_contents)
             else:
@@ -563,8 +607,8 @@ class tadmodel(object):
                 grp.create_dataset('pym',data=cPickle.dumps(pymhandler.getvalue()))
         else:
             grp = h5f.create_group(prefix)
-            grp.create_dataset('xyz',data=xyz,compression='gzip')
-            grp.create_dataset('r',data=r,compression='gzip')
+            grp.create_dataset('xyz',data=self.xyz,compression='gzip')
+            grp.create_dataset('r',data=self.r,compression='gzip')
             grp.create_dataset('log',data=cPickle.dumps(log_contents))
             grp.create_dataset('pym',data=cPickle.dumps(pymhandler.getvalue()))
         h5f.close()
@@ -619,6 +663,7 @@ def readCoordinates(filename,prefix):
     h5f = h5py.File(filename,'r')
     xyz = h5f[prefix]['xyz'][:]
     r   = h5f[prefix]['r'][:]
+    h5f.close()
     return xyz,r
     
 
