@@ -36,6 +36,7 @@ import random
 import h5py
 import logging
 import io
+import re
 
 class tadmodel(object):
     def __init__(self,probfile,radNucleus=5000.0,contactRange=1,level=None):
@@ -518,14 +519,18 @@ class tadmodel(object):
         print "Recover nucleus %.1f nm at T=%.1f K, score: %.8f"%(self.nucleusRadius,temp,score)
         return 0
     #==================utils
-    def evaluateRestraints(self,restraintset):
+    def evaluateRestraints(self,restraintset,tolerance=0.05):
         total = 0
         for rs in restraintset:
             score = rs.get_score()
-            if round(score) > 0:
+            rsstr = rs.get_name()
+            dist,k = re.findall(': (\d+.\d+) k = (\d+.\d+)',rsstr)[0]
+            dist = float(dist)
+            k    = float(k)
+            if (2*score/k)**0.5 > tolerance*dist:
                 total += 1
-                self.logger.warning("%s %f" % (rs,score))
-                print "%s %f" % (rs,score)
+                self.logger.warning("%s %f" % (rsstr,score))
+                print "%s %f" % (rsstr,score)
         return total
     def savepym(self,filename):
         pymfile = IMP.display.PymolWriter(filename)
@@ -661,6 +666,10 @@ def surfaceDistance(chain,pair):
 #============================i/o
 def readCoordinates(filename,prefix):
     h5f = h5py.File(filename,'r')
+    try:
+        grp = h5f[prefix]
+    except:
+        raise RuntimeError, "Group name %s doesn't exist!"%(prefix)
     xyz = h5f[prefix]['xyz'][:]
     r   = h5f[prefix]['r'][:]
     h5f.close()
