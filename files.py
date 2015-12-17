@@ -292,6 +292,8 @@ class modelgroup(object):
         except Exception as ex:
             raise ex
         self.score = float(re.findall('Final score (\d+.\d+)',self.log)[0])
+        self.consecutiveViolations = float(re.findall('(\d+) violations in total',self.log)[0])
+        self.contactViolations = float(re.findall('(\d+) violations in total',self.log)[1])
     def __repr__(self):
         return 'Final Score: '+str(self.score)
     
