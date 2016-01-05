@@ -283,7 +283,7 @@ class bedgraph(object):
         f.close
 
 class modelgroup(object):
-    def __init__(self,grouphandler):
+    def __init__(self,grouphandler,genome,idx):
         try:
             self.xyz = grouphandler['xyz'][:]
             self.r   = grouphandler['r'][:]
@@ -291,13 +291,40 @@ class modelgroup(object):
             self.pym = cPickle.loads(grouphandler['pym'].value)
         except Exception as ex:
             raise ex
-        self.score = float(re.findall('Final score (\d+.\d+)',self.log)[0])
-        self.consecutiveViolations = float(re.findall('(\d+) violations in total',self.log)[0])
-        self.contactViolations = float(re.findall('(\d+) violations in total',self.log)[1])
+        self.score  = float(re.findall('Final score (\d+.\d+)',self.log)[0])
+        self.genome = genome
+        self.idx    = idx
+        try:
+            self.consecutiveViolations = float(re.findall('(\d+) violations in total',self.log)[0])
+            self.contactViolations = float(re.findall('(\d+) violations in total',self.log)[1])
+        except:
+            pass
     def __repr__(self):
         return 'Final Score: '+str(self.score)
     
     #-
+    def getContactMap(self,contactRange=1):
+        from scipy.spatial import distance
+        n    = len(self.xyz)
+        dist = distance.cdist(self.xyz,self.xyz,'euclidean')
+        dcap = distance.cdist(self.r,-self.r)
+        cmap = dist <= dcap*(contactRange+1)
+        return cmap
+    #=
+    def getChromosomeCoordinates(self,chrom):
+        Aids = np.flatnonzero(self.idx['chrom'] == chrom)
+        Bids = Aids + len(self.idx)
+        return self.xyz[Aids],self.xyz[Bids],self.r[Aids]
+    #=
+    
+    def savepym(self,filename):
+        pymfile = open(filename,'w')
+        pymfile.write(self.pym)
+        pymfile.flush()
+        pymfile.close()
+        return 0
+    #=
+    
 #-
 class modelstructures(object):
     """
@@ -327,7 +354,7 @@ class modelstructures(object):
                 grp = h5f[prefix]
             except:
                 raise RuntimeError, "Group name %s doesn't exist!"%(prefix)
-            mg = modelgroup(grp)
+            mg = modelgroup(grp,self.genome,self.idx)
             self._structs.append(mg)
         #--
     #++++++++++++++++++++++++++++++++++++++++++++

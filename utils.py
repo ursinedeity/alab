@@ -187,6 +187,15 @@ def binomialSplit(A,p=0.5):
     
     return split1,split2
      
+def centerOfMass(xyz,r):
+    """
+    get center of mass of a list of particles, given xyz coordinates and radius
+    """
+    if len(xyz) != len(r):
+        raise RuntimeError, "Dimension not agree"
+    mass = r**3
+    return np.sum(xyz*mass,axis=0)/sum(mass)
+        
 #==========================================from mirny's lab source codes
 #See details in Imakaev et al. (2012)
 #Directly imported here in case ones missing mirnylib
