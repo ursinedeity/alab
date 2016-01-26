@@ -415,7 +415,7 @@ class contactmatrix(object):
         newmatrix = np.delete(np.delete(newmatrix,maskloc,axis=0),maskloc,axis=1)
         return newmatrix
   
-    def getfmax(self,method = 'UF',minSize=1,maxSize=2000,removeZero=False,boxplotTrim=False,includeDiagonal=False,target='median'):
+    def getfmax(self,method = 'UF',minSize=1,maxSize=2000,removeZero=False,boxplotTrim=False,offdiag=1,target='median'):
         """
         calculate fmax based on different methods
         Parameters:
@@ -448,10 +448,7 @@ class contactmatrix(object):
             #Get all intra domain interactions (upper triangle)
             upperTriangle = []
             skipDomains = 0
-            offdiag = 1
-            if includeDiagonal:
-                offdiag = 0
-                print "Including Diagonals"
+            print "Including Off Diagonal %d" %(offdiag)
             
             rowmask = np.flatnonzero(self.rowsum() == 0) #removed bins
             for domainRec in self.domainIdx:
