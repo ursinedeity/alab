@@ -343,6 +343,16 @@ class contactmatrix(object):
         submatrix._applyedMethods['subMatrix'] = chrom
         return submatrix
     
+    def getICP(self,index):
+        """
+        return inter-chromosomal proportion of a given bin index
+        """
+        chrom = self.idx[index]['chrom']
+        cstart,cend = self.range(chrom)
+        intrasum = sum(self.matrix[index][cstart:cend])
+        totalsum = sum(self.matrix[index])
+        return 1-intrasum*1.0/totalsum
+    
     #----------------------------------------------------------genome wide smoothing stuff:
     def smoothGenomeWideHighValue(self,w=3,s=3,p=3,z=5,force=False):
         """
