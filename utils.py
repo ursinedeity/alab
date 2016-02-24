@@ -18,7 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__author__ = 'N.H.'
+__author__  = "Nan Hua"
+
+__license__ = "GPL"
+__version__ = "0.0.1"
+__email__   = "nhua@usc.edu"
+
 import os
 import re
 import math
@@ -28,11 +33,12 @@ import warnings
 import numpy as np
 from collections import namedtuple
 from alab.io import loadstream
+import alab
 
 #===========================================================================
 class genome(object):
     def __init__(self,genomeName,usechr=['#','X']):
-        datafile = os.environ['GENOMES'] + '/' + genomeName + '.info'
+        datafile = os.path.join(alab.__path__[0],'genomes/' + genomeName + '.info')
         f = loadstream(datafile)
         self.info = np.genfromtxt(f,dtype=[('chrom','S5'),('length',int)])
         f.close() 

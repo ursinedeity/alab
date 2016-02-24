@@ -17,7 +17,12 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-__author__ = 'N.H.'
+__author__  = "Nan Hua"
+__credits__ = ["Nan Hua","Ke Gong","Harianto Tjong"]
+
+__license__ = "GPL"
+__version__ = "0.0.1"
+__email__   = "nhua@usc.edu"
 
 import numpy as np
 import os.path

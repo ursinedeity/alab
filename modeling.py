@@ -21,7 +21,12 @@
 # Prerequests:
 # IMP 2.5 is required for this module
 
-__author__ = 'N.H.'
+__author__  = "Nan Hua"
+__credits__ = ["Nan Hua","Ke Gong","Harianto Tjong"]
+
+__license__ = "GPL"
+__version__ = "0.0.1"
+__email__   = "nhua@usc.edu"
 
 import alab.matrix
 import alab.utils
