@@ -71,7 +71,7 @@ class tadmodel(object):
         nucvol   = (4*3.1415/3)*self.nucleusRadius**3
         #And chromosome occupancy
         dnaocc   = dnavol / nucvol
-        self.logger.debug('occupancy: %.2f with Rnuc %d'%(dnaocc,self.nucleusRadius))
+        self.logger.debug(u'occupancy: %.2f with Rnuc %d'%(dnaocc,self.nucleusRadius))
         #diploid Rb; 2xtotal haploid beads 
         self.beadRadius = self.beadRadius + self.beadRadius
         # Chromosome territory apply
@@ -150,7 +150,7 @@ class tadmodel(object):
         self.consecutiveBeadRestraints = self._get_consecutiveBeadRestraints(lowprob=lowprob,kspring=10)
         for rs in self.consecutiveBeadRestraints: #3
             self.restraints.add_restraint(rs) 
-        self.logger.debug("Total consecutive bead restraints %d"%(len(self.consecutiveBeadRestraints)))
+        self.logger.debug(u"Total consecutive bead restraints %d"%(len(self.consecutiveBeadRestraints)))
         print "Total consecutive bead restraints %d"%(len(self.consecutiveBeadRestraints))
         return self.consecutiveBeadRestraints
     
@@ -158,7 +158,7 @@ class tadmodel(object):
         self.fmaxRestraints = self._get_fmaxRestraints(kspring=kspring)
         for rs in self.fmaxRestraints: #4
             self.restraints.add_restraint(rs)
-        self.logger.debug("Total fmax restraints %d"% (len(self.fmaxRestraints)))
+        self.logger.debug(u"Total fmax restraints %d"% (len(self.fmaxRestraints)))
         print "Total fmax restraints %d"% (len(self.fmaxRestraints))
         return self.fmaxRestraints
     
@@ -372,7 +372,7 @@ class tadmodel(object):
             #np.savetxt(tt+'.af',self.xyz,fmt='%.4f')
             s = o.optimize(step)
         if not silent:
-            self.logger.info('CG %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
+            self.logger.info(u'CG %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
             print 'CG %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
         return s
 
@@ -388,7 +388,7 @@ class tadmodel(object):
         s    = o.optimize(step)
         o.remove_optimizer_state(md)
         if not silent:
-            self.logger.info('MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
+            self.logger.info(u'MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
             print 'MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
         return s
     def mdstep_withChromosomeTerritory(self,t,step):
@@ -435,7 +435,7 @@ class tadmodel(object):
         #---
         #s = mdstep(model,chain,sf,t,1000)
         self.updateScoringFunction()
-        self.logger.info('CT-MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
+        self.logger.info(u'CT-MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
         print 'CT-MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
         return s
     def SimulatedAnnealing(self,hot,cold,nc=10,nstep=500):
@@ -447,10 +447,10 @@ class tadmodel(object):
         for i in range(nc):
             t = hot-dt*i
             s = self.mdstep(t,nstep,silent=True)
-            self.logger.info( "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,alab.utils.timespend(t0),s))
+            self.logger.info(u"      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,alab.utils.timespend(t0),s))
             print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,alab.utils.timespend(t0),s)
         s= self.mdstep(cold,nstep,silent=True)
-        self.logger.info("      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,alab.utils.timespend(t0),s))
+        self.logger.info(u"      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,alab.utils.timespend(t0),s))
         print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,alab.utils.timespend(t0),s)
         self.cgstep(100,silent=True)
 
@@ -462,14 +462,14 @@ class tadmodel(object):
             t = hot-dt*i
             self.mdstep(t,nstep,silent=True)
             score = self.cgstep(100,silent=True)
-            self.logger.info("      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,alab.utils.timespend(t0),score))
+            self.logger.info(u"      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,alab.utils.timespend(t0),score))
             print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,alab.utils.timespend(t0),score)
             if score < lowscore:
                 return t,score
                 break
         self.mdstep(cold,300,silent=True)
         score = self.cgstep(100,silent=True)
-        self.logger.info( "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score))
+        self.logger.info(u"      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score))
         print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score)
         return t,score
     
@@ -482,10 +482,10 @@ class tadmodel(object):
         nucrads = range(radEndShrink,radStartShrink,incr)
         nucrads.append(radStartShrink)
         nucrads = sorted(nucrads, reverse=True)
-        self.logger.debug("Optimization with decreasing NE %s"%(nucrads))
+        self.logger.debug(u"Optimization with decreasing NE %s"%(nucrads))
         print "Optimization with decreasing NE %s"%(nucrads)
         expanded=False
-        self.logger.debug("\t--- Start shrinking ---")
+        self.logger.debug(u"\t--- Start shrinking ---")
         print "\t--- Start shrinking ---"
         self.restraints.remove_restraint(self.nucleusEnvelopeRestraint) #will be replaced by temporary
         for r_nuc in nucrads:
@@ -496,11 +496,11 @@ class tadmodel(object):
             self.updateScoringFunction([self.restraints,rnuc])
             temp, score = self.SimulatedAnnealing_Scored(2000,300,nc=2, lowscore=shrinkScore)
             score = self.cgstep(500,silent=True)
-            self.logger.debug("Score optimizing temporary NE %dmm done: %.8f"%(r_nuc,score))
+            self.logger.debug(u"Score optimizing temporary NE %dmm done: %.8f"%(r_nuc,score))
             print "Score optimizing temporary NE %dmm done: %.8f"%(r_nuc,score)
             if score > minscore:
                 if expanded == False: #haven't done expansion steps before
-                    self.logger.debug("\t    --- Start expanding ---")
+                    self.logger.debug(u"\t    --- Start expanding ---")
                     print "\t    --- Start expanding ---"
                     ubexpend = IMP.core.HarmonicUpperBound(radExpand,1.0)
                     ssexpend = IMP.core.DistanceToSingletonScore(ubexpend,self.center)
@@ -508,10 +508,10 @@ class tadmodel(object):
                     expanded = True
                     self.updateScoringFunction([self.restraints,rexpend])
                     temp, score = self.SimulatedAnnealing_Scored(75000,500,nstep=1000, nc=2, lowscore=shrinkScore)
-                    self.logger.debug("\t     ...back to shrinking...")
+                    self.logger.debug(u"\t     ...back to shrinking...")
                     print "\t     ...back to shrinking..."
                 else:
-                    self.logger.debug('\t     Score is still high after expansion: %.8f' %(score))
+                    self.logger.debug(u'\t     Score is still high after expansion: %.8f' %(score))
                     print '\t     Score is still high after expansion: %.8f' %(score)
                     break
             #-
@@ -520,7 +520,7 @@ class tadmodel(object):
         self.restraints.add_restraint(self.nucleusEnvelopeRestraint) #2
         self.updateScoringFunction()
         temp, score = self.SimulatedAnnealing_Scored(2000,300, nc=2, nstep=1000, lowscore=1)
-        self.logger.debug("Recover nucleus %.1f nm at T=%.1f K, score: %.8f"%(self.nucleusRadius,temp,score))
+        self.logger.debug(u"Recover nucleus %.1f nm at T=%.1f K, score: %.8f"%(self.nucleusRadius,temp,score))
         print "Recover nucleus %.1f nm at T=%.1f K, score: %.8f"%(self.nucleusRadius,temp,score)
         return 0
     #==================utils
@@ -534,7 +534,7 @@ class tadmodel(object):
             k    = float(k)
             if (2*score/k)**0.5 > tolerance*dist:
                 total += 1
-                self.logger.warning("%s %f" % (rsstr,score))
+                self.logger.warning(u"%s %f" % (rsstr,score))
                 print "%s %f" % (rsstr,score)
         return total
     def savepym(self,filename):
