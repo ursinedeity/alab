@@ -55,7 +55,7 @@ class contactmatrix(object):
                     self.resolution = cPickle.loads(h5f['resolution'].value)
                 h5f.close()
             else:
-                from alab.io import loadstream
+                from aio import loadstream
                 f    = loadstream(filename)
                 s    = f.next()
                 line = re.split('\t+|\s+',s.rstrip())

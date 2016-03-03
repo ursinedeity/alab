@@ -48,7 +48,7 @@ class bedgraph(object):
         self.itr             = 0
         if not filename is None:
             if isinstance(filename,str):
-                from alab.io import loadstream
+                from aio import loadstream
                 f = loadstream(filename)
                 readtable = np.genfromtxt(
                                     f,
