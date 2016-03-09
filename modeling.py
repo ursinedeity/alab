@@ -289,7 +289,7 @@ class tadmodel(object):
             p1 = self.chain.get_particles()[p[1]]
             pair = IMP.ParticlePair(p0,p1)
             ambi.add(pair)
-        restraintName += "] : %f k = %.1f" % (dist,kspring)
+        restraintName += "] <%d> : %f k = %.1f" % (minnum,dist,kspring)
         ds = IMP.core.SphereDistancePairScore(IMP.core.HarmonicUpperBound(dist,kspring))
         minpr = IMP.container.MinimumPairRestraint(ds,ambi,minnum,restraintName)
         return minpr
