@@ -42,13 +42,14 @@ class genome(object):
         f = loadstream(datafile)
         self.info = np.genfromtxt(f,dtype=[('chrom','S5'),('length',int)])
         f.close() 
-        removepattern = ''
-        if not '#' in usechr: removepattern += '0-9'
-        if not 'X' in usechr: removepattern += 'X'
-        if not 'Y' in usechr: removepattern += 'Y'
-        if not 'M' in usechr: removepattern += 'M'
-        
-        self.info = np.delete(self.info,np.nonzero([re.search('chr['+removepattern+']',c) for c in self.info['chrom']]))
+        choices = np.zeros(len(self.info),dtype=bool)
+        for chrnum in usechr:
+            if chrnum == '#':
+                choices = np.logical_or([re.search('chr[0-9]',c) != None for c in self.info['chrom']],choices)
+            else:
+                choices = np.logical_or(self.info['chrom'] == ('chr'+str(chrnum)), choices)
+
+        self.info = self.info[choices]
     
     def bininfo(self,resolution):
         binSize    = [int(math.ceil(float(x)/resolution)) for x in self.info['length']]
