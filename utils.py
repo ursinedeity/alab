@@ -40,7 +40,7 @@ class genome(object):
     def __init__(self,genomeName,usechr=['#','X']):
         datafile = os.path.join(alab.__path__[0],'genomes/' + genomeName + '.info')
         f = loadstream(datafile)
-        self.info = np.genfromtxt(f,dtype=[('chrom','S10'),('length',int)])
+        self.info = np.genfromtxt(f,dtype=[('chrom','S30'),('length',int)])
         f.close() 
         choices = np.zeros(len(self.info),dtype=bool)
         for chrnum in usechr:

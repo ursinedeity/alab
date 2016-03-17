@@ -35,7 +35,7 @@ from alab.plots import plotxy, plotmatrix, histogram
 import alab.utils
 
 class contactmatrix(object):
-    _idxdtype = np.dtype([('chrom','S5'),('start',int),('end',int),('flag','S10')])
+    _idxdtype = np.dtype([('chrom','S30'),('start',int),('end',int),('flag','S30')])
     def __init__(self,filename,genome=None,resolution=None,usechr=['#','X']):
         self._applyedMethods = {}
         if isinstance(filename,int):
@@ -231,8 +231,8 @@ class contactmatrix(object):
             mask is a 1-D vector with the same length as the matrix where 1s specify the row/column to be ignored
             or a 1-D vector specifing the indexes of row/column to be ignored
             if no mask is given, row/column with rowsum==0 will be automatically detected and ignored
-        large_mem: bool
-            when large_mem is set to 1, matrix product is calculated using small chunks, 
+        largemem: bool
+            when largemem is set to 1, matrix product is calculated using small chunks, 
             but this will slowdown the process a little bit.     
         """
         if (not self.applyed('normalization')) or force:

@@ -47,28 +47,28 @@ def loadstream(filename):
     return f
 
 
-###############################################################################end bedgraph class
-def loadSubcompartment(filename,genome_version='mm9',info=5):
-    #need improvement
-    from flab.constant import mm9
-    from collections import namedtuple
-    genomeInfo = mm9.Genome()
-    # +++++++++++++++
+################################################################################end bedgraph class
+#def loadSubcompartment(filename,genome_version='mm9',info=5):
+    ##need improvement
+    #from flab.constant import mm9
+    #from collections import namedtuple
+    #genomeInfo = mm9.Genome()
+    ## +++++++++++++++
 
-    bedInfo    = np.genfromtxt(filename,dtype=str)
-    resolution = int(bedInfo[0][2]) - int(bedInfo[0][1])
-    binInfo    = genomeInfo.get_fix_bin_info(resolution)
+    #bedInfo    = np.genfromtxt(filename,dtype=str)
+    #resolution = int(bedInfo[0][2]) - int(bedInfo[0][1])
+    #binInfo    = genomeInfo.get_fix_bin_info(resolution)
 
-    state      = np.chararray(binInfo.totalBin,itemsize=2)
-    state[:]   = 'NA'
+    #state      = np.chararray(binInfo.totalBin,itemsize=2)
+    #state[:]   = 'NA'
 
-    for line in bedInfo:
-        i = int(line[6])-1
-        state[i] = line[info-1]
+    #for line in bedInfo:
+        #i = int(line[6])-1
+        #state[i] = line[info-1]
 
-    stateID   = {'NA':0,'A1':1,'A2':2,'B1':3,'B2':4,'B3':5}
-    stateInfo = [state,stateID]
-    return namedtuple('stateInfo', 'state, stateID')._make(stateInfo)
+    #stateID   = {'NA':0,'A1':1,'A2':2,'B1':3,'B2':4,'B3':5}
+    #stateInfo = [state,stateID]
+    #return namedtuple('stateInfo', 'state, stateID')._make(stateInfo)
 
 
 
