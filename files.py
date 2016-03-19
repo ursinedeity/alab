@@ -299,12 +299,12 @@ class modelgroup(object):
         self.genome = genome
         self.idx    = idx
         try:
-            findVio = re.findall('(\d+) violations in total',self.log)
-            self.consecutiveViolations = float(findVio[0])
-            self.contactViolations = float(findVio[1])
             findRes = re.findall('#of Intra restraints: (\d+) #of Inter restraints: (\d+)',self.log)
             self.intraRestraints = float(findRes[0][0])
             self.interRestraints = float(findRes[0][1])
+            findVio = re.findall('(\d+) violations in total',self.log)
+            self.consecutiveViolations = float(findVio[0])
+            self.contactViolations = float(findVio[1])
         except:
             pass
     def __repr__(self):
