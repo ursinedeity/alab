@@ -499,15 +499,15 @@ class contactmatrix(object):
         warnings.warn("fmaximization is deprecated, function name changed to fmaxScaling.", DeprecationWarning)
         self.fmaxScaling(**kwargs)
         
-    def fmaxScaling(self,fmax):
+    def fmaxScaling(self,fmax,force=False):
         """
         use fmax to generate probability matrix
         for uniform fmax, simply divide the matrix by fmax and clip to 1
         for neighbouring contact fmax
         P[i,j] = F[i,j]/min(fmax[i],fmax[j])
         """
-        if self.applyed('probabilityMatrix'):
-            raise RuntimeError, "This is already a probability matrix!"
+        if self.applyed('probabilityMatrix') and (not force):
+            raise RuntimeError, "This is already a probability matrix!,use force to overwrite"
         if isinstance(fmax,float) or isinstance(fmax,np.float32) or isinstance(fmax,int):
             print "Uniform fmax detected"
             self.matrix = self.matrix/fmax
@@ -575,7 +575,7 @@ class contactmatrix(object):
         
         return domainLevelMatrix
     
-    def iterativeFmaxScaling(self,domainAverageContacts=23.2):
+    def iterativeFmaxScaling(self,domainAverageContacts=23.2,tol=0.01):
         """
         Automatic fmax scaling to get domain level matrix and match the rowsum average domain level matrix to 
         domainAverageContacts
@@ -583,10 +583,10 @@ class contactmatrix(object):
         fmax = self.getfmax()
         domainMean = 0
         originMatrix = copy.deepcopy(self.matrix)
-        while abs(domainMean - domainAverageContacts)/domainAverageContacts > 0.05:
+        while abs(domainMean - domainAverageContacts)/domainAverageContacts > tol:
             print "fmax=%f"%(fmax)
             self.matrix = copy.deepcopy(originMatrix)
-            self.fmaxScaling(fmax)
+            self.fmaxScaling(fmax,force=True)
             domainLevelMatrix = self.makeDomainLevelMatrix()
             domainMean = domainLevelMatrix.rowsum().mean()
             fmax = fmax/domainAverageContacts*domainMean
