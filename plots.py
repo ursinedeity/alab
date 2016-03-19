@@ -155,7 +155,9 @@ def plotmatrix(figurename,matrix,format='png',title=None,**kwargs):
     
     clip_min = kwargs.pop('clip_min', -np.inf)
     clip_max = kwargs.pop('clip_max', np.inf)
-    cmap     = kwargs.pop('cmap',cm.Reds)
+    
+    cwrb = make_colormap([(1,1,1),(1,0,0),0.5,(1,0,0),(0,0,0)],'wrb')
+    cmap     = kwargs.pop('cmap',cwrb)
     fig  = plt.figure()
     if 'ticklabels1' in kwargs:
         plt.yticks(range(matrix.shape[0]))
