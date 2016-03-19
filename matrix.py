@@ -143,7 +143,7 @@ class contactmatrix(object):
         else:
             warnings.warn("Method removeDiagonal was done before, use force = True to overwrite it.")
       
-    def removePoorRegions(self, cutoff=1, usepvalue = 0.3, force = False):
+    def removePoorRegions(self, cutoff=1, usepvalue = 0.1, force = False):
         """Removes "cutoff" percent of bins with least counts
 
         Parameters
@@ -537,7 +537,7 @@ class contactmatrix(object):
             raise TypeError,"Bedgraph instance required, see alab.files.bedgraph for more details"
         self.domainIdx = domain.filter(pattern)
     
-    def makeDomainLevelMatrix(self,method='topmean',top=10):
+    def makeDomainLevelMatrix(self,method='median',top=10):
         """
             Use domain INFO to generate Domain level matrix
             Parameters:
@@ -550,8 +550,7 @@ class contactmatrix(object):
             raise RuntimeError, "This is already a domain level matrix!"
         if not hasattr(self,"domainIdx"):
             raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
-        from numutils import generateSummaryMatrix
-        
+            
         domainLevelMatrix = contactmatrix(len(self.domainIdx))
         domainLevelMatrix._buildindex(self.domainIdx['chrom'],self.domainIdx['start'],self.domainIdx['end'],self.domainIdx['flag'])
         domainLevelMatrix.genome = self.genome
@@ -564,10 +563,35 @@ class contactmatrix(object):
             chrStartBin,chrEndBin = self.range(self.domainIdx[i]['chrom'])
             summaryBinStart[i]    = chrStartBin + int(self.domainIdx[i]['start'] / float(self.resolution))
             summaryBinEnd[i]      = chrStartBin + int(np.ceil(self.domainIdx[i]['end'] / float(self.resolution)))
-      
-        domainLevelMatrix.matrix = generateSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,top=top)
-        domainLevelMatrix._applyedMethods['domainLevel'] = "%s/top=%d%s" % (method,top,'%')
+            
+        if method == 'topmean':
+            from numutils import generateTopMeanSummaryMatrix
+            domainLevelMatrix.matrix = generateTopMeanSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,top=top)
+            domainLevelMatrix._applyedMethods['domainLevel'] = "%s/top=%d%s" % (method,top,'%')
+        elif method == 'median':
+            from numutils import generateMedianSummaryMatrix
+            domainLevelMatrix.matrix = generateMedianSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd)
+            domainLevelMatrix._applyedMethods['domainLevel'] = "%s" % (method)
+        
         return domainLevelMatrix
+    
+    def iterativeFmaxScaling(self,domainAverageContacts=23.2):
+        """
+        Automatic fmax scaling to get domain level matrix and match the rowsum average domain level matrix to 
+        domainAverageContacts
+        """
+        fmax = self.getfmax()
+        domainMean = 0
+        originMatrix = copy.deepcopy(self.matrix)
+        while (domainMean - domainAverageContacts)/domainAverageContacts > 0.05:
+            print "fmax=%f"%(fmax)
+            self.matrix = copy.deepcopy(originMatrix)
+            self.fmaxScaling(fmax)
+            domainLevelMatrix = self.makeDomainLevelMatrix()
+            domainMean = domainLevelMatrix.rowsum().mean()
+            fmax = fmax/domainAverageContacts*domainMean
+        return domainLevelMatrix
+        
     #==============================================================plotting methods
     def plot(self,figurename,log=True,**kwargs):
         """
