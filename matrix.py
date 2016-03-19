@@ -583,7 +583,7 @@ class contactmatrix(object):
         fmax = self.getfmax()
         domainMean = 0
         originMatrix = copy.deepcopy(self.matrix)
-        while (domainMean - domainAverageContacts)/domainAverageContacts > 0.05:
+        while abs(domainMean - domainAverageContacts)/domainAverageContacts > 0.05:
             print "fmax=%f"%(fmax)
             self.matrix = copy.deepcopy(originMatrix)
             self.fmaxScaling(fmax)
