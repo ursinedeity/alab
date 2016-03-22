@@ -33,6 +33,7 @@ import cPickle as pickle
 import alab.matrix
 import alab.utils
 import alab.files
+import copy
 
 class structuresummary(object):
     """
@@ -60,7 +61,7 @@ class structuresummary(object):
             print("reading %d structures info in %s,%s"%(nstruct,target,usegrp))
             self._readStructures(target,pid,**kwargs)
         elif os.path.isfile(target) and os.path.splitext(target)[1] == '.hss':
-            h5f = h5py.File(filename,'r')
+            h5f = h5py.File(target,'r')
             self.idx                   = h5f['idx'][:]
             self.genome                = pickle.loads(h5f['genome'].value)
             self.usegrp                = pickle.loads(h5f['usegrp'].value)
@@ -151,7 +152,31 @@ class structuresummary(object):
         return 0
     #----------------------------
     
+    def getAverageRestraints(self):
+        """
+        Return average restraints per structure
+        """
+        return self.interRestraints.mean()+self.intraRestraints.mean()
     
+    def getContactMap(self,contactRange=1):
+        """
+        Return contact matrix format contact heatmap
+        """
+        from scipy.spatial import distance
+        modelmap        = alab.matrix.contactmatrix(self.nbead)
+        modelmap.idx    = copy.deepcopy(self.idx)
+        modelmap.genome = copy.deepcopy(self.genome)
+        modelmap.resolution = None
+        n = self.nbead*2
+        for i in range(self.nstruct):
+            dist = distance.cdist(self.coordinates[i],self.coordinates[i],'euclidean')
+            dcap = distance.cdist(self.r,-self.r)
+            cmap = dist <= dcap*(contactRange+1)
+            modelmap.matrix += cmap[:n/2,:n/2]+cmap[:n/2,n/2:]+cmap[n/2:,:n/2]+cmap[n/2:,n/2:]
+        
+        modelmap.matrix = modelmap.matrix/self.nstruct/2
+        
+        return modelmap
     
     #==========================saving
     def save(self,filename):
