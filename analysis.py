@@ -167,16 +167,64 @@ class structuresummary(object):
         modelmap.idx    = copy.deepcopy(self.idx)
         modelmap.genome = copy.deepcopy(self.genome)
         modelmap.resolution = None
-        n = self.nbead*2
+        n    = self.nbead*2
+        dcap = distance.cdist(self.radius,-self.radius)*(contactRange+1)
+        cmap = np.zeros((n,n))
         for i in range(self.nstruct):
-            dist = distance.cdist(self.coordinates[i],self.coordinates[i],'euclidean')
-            dcap = distance.cdist(self.r,-self.r)
-            cmap = dist <= dcap*(contactRange+1)
-            modelmap.matrix += cmap[:n/2,:n/2]+cmap[:n/2,n/2:]+cmap[n/2:,:n/2]+cmap[n/2:,n/2:]
-        
+            if (i+1)*10.0 % self.nstruct == 0:
+                print("%.3f %%"%((i+1)*100.0 / self.nstruct))
+            #print(i)
+            dist   = distance.cdist(self.coordinates[i],self.coordinates[i],'euclidean')
+            submap = dist <= dcap
+            cmap  += submap
+            
+        modelmap.matrix = cmap[:n/2,:n/2]+cmap[:n/2,n/2:]+cmap[n/2:,:n/2]+cmap[n/2:,n/2:]
         modelmap.matrix = modelmap.matrix/self.nstruct/2
         
         return modelmap
+    
+    def getAveragePairwiseDistance(self,form='list'):
+        """
+        Calculate pairwise distance mean for each pair of beads in the structure population
+        
+        Parameters
+        ----------
+        form : the return form of the function
+               'list' return the list form
+               'matrix' return the matrix form
+        """
+        pdistMean = np.zeros((2*self.nbead,2*self.nbead))
+        for i in range(2*self.nbead):
+            for j in range(i+1,2*self.nbead):
+                dist = np.linalg.norm(self.coordinates[:,i,:] - self.coordinates[:,j,:],axis=1)
+                pdistMean[i,j] = dist.mean()
+                pdistMean[j,i] = pdistMean[i,j]
+        
+        if form == 'list':
+            return pdistMean[np.triu_indices(2*self.nbead,1)]
+        else:
+            return pdistMean
+    
+    def getBeadRadialPosition(self,beads,nucleusRadius=5000.0):
+        """
+        Calculate radial position for every bead in the input list beads
+        
+        Parameters
+        ----------
+        beads : array-like, list of all beads to calculate
+        nucleusRadius : radius of nucleus, default 5000(nm)
+        
+        Return
+        ------
+        M*N matrix : radial position for all beads in the input and all structures in population
+                     M = len(beads)
+                     N = number of structures in population
+        """
+        allrp = []
+        for i in np.array(beads):
+            rp = np.linalg.norm(self.coordinates[:,i,:],axis=1)
+            allrp.append(rp)
+        return np.array(rp)
     
     #==========================saving
     def save(self,filename):

@@ -575,7 +575,7 @@ class contactmatrix(object):
         
         return domainLevelMatrix
     
-    def iterativeFmaxScaling(self,domainAverageContacts=23.2,tol=0.01):
+    def iterativeFmaxScaling(self,domainAverageContacts=23.2,tol=0.01,**kwargs):
         """
         Automatic fmax scaling to get domain level matrix and match the rowsum average domain level matrix to 
         domainAverageContacts
@@ -587,7 +587,7 @@ class contactmatrix(object):
             print "fmax=%f"%(fmax)
             self.matrix = copy.deepcopy(originMatrix)
             self.fmaxScaling(fmax,force=True)
-            domainLevelMatrix = self.makeDomainLevelMatrix()
+            domainLevelMatrix = self.makeDomainLevelMatrix(**kwargs)
             domainMean = domainLevelMatrix.rowsum().mean()
             fmax = fmax/domainAverageContacts*domainMean
         return domainLevelMatrix
