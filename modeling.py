@@ -149,7 +149,7 @@ class tadmodel(object):
         self.restraints.add_restraint(self.nucleusEnvelopeRestraint) #2
         return self.nucleusEnvelopeRestraint
     
-    def set_consecutiveBeads(self,lowprob=0.1):
+    def set_consecutiveBeads(self,lowprob=0.5):
         # Setup consecutive bead upper bound constraints
         self.consecutiveBeadRestraints = self._get_consecutiveBeadRestraints(lowprob=lowprob,kspring=10)
         for rs in self.consecutiveBeadRestraints: #3

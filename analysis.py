@@ -156,7 +156,7 @@ class structuresummary(object):
         """
         Return average restraints per structure
         """
-        return self.interRestraints.mean()+self.intraRestraints.mean()
+        return self.interRestraints.mean()+self.intraRestraints.mean()+self.nbead*2
     
     def getContactMap(self,contactRange=1):
         """
