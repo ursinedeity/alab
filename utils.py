@@ -203,6 +203,39 @@ def centerOfMass(xyz,r):
     mass = r**3
     return np.sum(xyz*mass,axis=0)/sum(mass)
         
+def intersectMatrixIndex(idx,chrom,querystart,querystop):
+    """
+    Fetch a intersection list with a given interval
+    Return a list of indeces for with all records within the interval
+    
+    Parameter
+    ---------
+    idx : index structure array for alab.matrix.idx et al.
+    chrom : chromsome e.g. 'chr1'
+    querystart : start position
+    queryend : end position
+    
+    Return
+    ------
+    array like indeces for all records 
+    """
+    import bisect
+    
+    intersectList = []
+    sub = idx['chrom'] == chrom
+    data = idx[sub]
+    
+    if len(data) > 0:
+        rstart = np.flatnonzero(sub)[0]
+        i = bisect.bisect(data['end'],querystart)
+        while (i < len(data)) and (data[i]['start'] < querystop):
+            intersectList.append(i)
+            i += 1
+    if len(intersectList) == 0:
+        return None
+    else:
+        return np.array(intersectList) + rstart
+    
 #==========================================from mirny's lab source codes
 #See details in Imakaev et al. (2012)
 #Directly imported here in case ones missing mirnylib

@@ -152,11 +152,46 @@ class structuresummary(object):
         return 0
     #----------------------------
     
-    def getAverageRestraints(self):
+    def findBinIndex(self,chrom,start,end):
         """
-        Return average restraints per structure
+        To find bead indexes given a chromosome region
+        Parameters
+        ----------
+        chrom : chromosome, should match the .idx representation
+        start,end : location range
+        
+        Return
+        ------
+        Bin indexes array, or None if there is no valid ones
         """
-        return self.interRestraints.mean()+self.intraRestraints.mean()+self.nbead*2
+        return alab.utils.intersectMatrixIndex(self.idx,chrom,start,end)
+    
+    @property
+    def totalRestraints(self):
+        """
+        Return
+        ------
+        numpy array : all restraints for each structure
+        """
+        return self.interRestraints + self.intraRestraints + self.nbead*2
+    
+    @property
+    def totalViolations(self):
+        """
+        Return
+        ------
+        numpy array : all violations for each structure
+        """
+        return self.consecutiveViolations + self.contactViolations
+    
+    @property
+    def violationPercentage(self):
+        """
+        Return
+        ------
+        numpy array : violation percentage for each structure
+        """
+        return self.totalViolations / self.totalRestraints
     
     def getContactMap(self,contactRange=1):
         """

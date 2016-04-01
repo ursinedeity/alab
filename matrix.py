@@ -134,7 +134,22 @@ class contactmatrix(object):
             else:
                 self.genome = genome
                 self.resolution = resolution
-
+    
+    
+    def findBinIndex(self,chrom,start,end):
+        """
+        To find bin indexes given a chromosome region
+        Parameters
+        ----------
+        chrom : chromosome, should match the .idx representation
+        start,end : location range
+        
+        Return
+        ------
+        bin indexes array, or None if there is no valid ones
+        """
+        return alab.utils.intersectMatrixIndex(self.idx,chrom,start,end)
+    
     #=========================================================filtering methods
     def removeDiagonal(self,force = False):
         if (not self.applyed('removeDiagonal')) or force:
