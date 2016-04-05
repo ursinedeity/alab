@@ -218,6 +218,21 @@ class structuresummary(object):
         
         return modelmap
     
+    def getPairDistance(self,bead1,bead2):
+        """
+        Calculate pairwise distance across all structures
+        
+        Parameters
+        ----------
+        bead1,bead2 : int, two bead in a pair, input to calculate distance
+        
+        Return
+        ------
+        numpy array that has distance for the bead pair.
+        """
+        
+        return np.linalg.norm(self.coordinates[:,bead1,:] - self.coordinates[:,bead2,:],axis=1)
+    
     def getAveragePairwiseDistance(self,form='list'):
         """
         Calculate pairwise distance mean for each pair of beads in the structure population
@@ -231,7 +246,7 @@ class structuresummary(object):
         pdistMean = np.zeros((2*self.nbead,2*self.nbead))
         for i in range(2*self.nbead):
             for j in range(i+1,2*self.nbead):
-                dist = np.linalg.norm(self.coordinates[:,i,:] - self.coordinates[:,j,:],axis=1)
+                dist = self.getPairDistance(i,j)
                 pdistMean[i,j] = dist.mean()
                 pdistMean[j,i] = pdistMean[i,j]
         
@@ -257,10 +272,39 @@ class structuresummary(object):
         """
         allrp = []
         for i in np.array(beads):
-            rp = np.linalg.norm(self.coordinates[:,i,:],axis=1)
+            rp = np.linalg.norm(self.coordinates[:,i,:],axis=1).mean() / nucleusRadius
             allrp.append(rp)
-        return np.array(rp)
+        return np.array(allrp)
     
+    def getChromosomeRadialPosition(self,chrom,nucleusRadius=5000.0):
+        """
+        Calculate radial position for the chrom
+        
+        Parameters
+        ----------
+        chrom : the chromosome to calculate
+        nucleusRadius : radius of nucleus, default 5000(nm)
+        
+        Return
+        ------
+        2N*1 vector : radial position for the chromosome in all structures in population
+        """
+        
+        Aids = np.flatnonzero(self.idx['chrom'] == chrom)
+        Bids = Aids + self.nbead
+        
+        radial = np.zeros(self.nstruct*2)
+        for i in range(self.nstruct):
+            xyzA = self.coordinates[i][Aids]
+            xyzB = self.coordinates[i][Bids]
+            comA = alab.utils.centerOfMass(xyzA,self.radius[Aids])
+            comB = alab.utils.centerOfMass(xyzB,self.radius[Bids])
+            
+            radial[i*2]   = np.linalg.norm(comA)/nucleusRadius
+            radial[i*2+1] = np.linalg.norm(comB)/nucleusRadius
+        #-
+        return radial
+        
     #==========================saving
     def save(self,filename):
         """
@@ -289,3 +333,8 @@ class structuresummary(object):
 if __name__=='__main__':
     pass
 
+    
+    
+    
+    
+    
