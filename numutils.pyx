@@ -146,21 +146,25 @@ def neighbourFmaximization(A,fmax):
 @cython.cdivision(True)
 @cython.nonecheck(False)
 def generateTopMeanSummaryMatrix(A,summaryBinStart,summaryBinEnd,top,mask):
-    cdef int i,j,N
+    cdef int i,j,N,istart,iend,jstart,jend
     cdef float bound
     N = len(summaryBinStart)
     cdef np.ndarray[np.float32_t, ndim=2] _A = A
     cdef np.ndarray[np.float32_t, ndim=2] X = np.empty((N,N),np.float32)
     for i in range(N):
         #print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
+        istart = int(summaryBinStart[i])
+        iend   = int(summaryBinEnd[i])
         for j in range(i,N):
-            submatrix = _A[summaryBinStart[i]:summaryBinEnd[i],summaryBinStart[j]:summaryBinEnd[j]]
+            jstart = int(summaryBinStart[j])
+            jend   = int(summaryBinEnd[j])
+            submatrix = _A[istart:iend,jstart:jend]
             bound = np.percentile(submatrix,100-top)
             #making sure that empty bins are removed
-            maskloc_i = np.intersect1d(range(summaryBinStart[i],summaryBinEnd[i]),self.mask)
-            maskloc_j = np.intersect1d(range(summaryBinStart[j],summaryBinEnd[j]),self.mask)
-            maskloc_i = maskloc_i - summaryBinStart[i]
-            maskloc_j = maskloc_j - summaryBinStart[j]
+            maskloc_i = np.intersect1d(range(istart,iend),mask)
+            maskloc_j = np.intersect1d(range(jstart,jend),mask)
+            maskloc_i = maskloc_i - istart
+            maskloc_j = maskloc_j - iend
             submatrix = np.delete(np.delete(submatrix,maskloc_i,axis=0),maskloc_j,axis=1)
             X[i,j] = X[j,i] = np.mean(submatrix[submatrix >= bound])
   
@@ -172,20 +176,24 @@ def generateTopMeanSummaryMatrix(A,summaryBinStart,summaryBinEnd,top,mask):
 @cython.cdivision(True)
 @cython.nonecheck(False)
 def generateMedianSummaryMatrix(A,summaryBinStart,summaryBinEnd,mask):
-    cdef int i,j,N
+    cdef int i,j,N,istart,iend,jstart,jend
     cdef float bound
     N = len(summaryBinStart)
     cdef np.ndarray[np.float32_t, ndim=2] _A = A
     cdef np.ndarray[np.float32_t, ndim=2] X = np.empty((N,N),np.float32)
     for i in range(N):
         #print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
+        istart = int(summaryBinStart[i])
+        iend   = int(summaryBinEnd[i])
         for j in range(i,N):
-            submatrix = _A[summaryBinStart[i]:summaryBinEnd[i],summaryBinStart[j]:summaryBinEnd[j]]
+            jstart = int(summaryBinStart[j])
+            jend   = int(summaryBinEnd[j])
+            submatrix = _A[istart:iend,jstart:jend]
             #making sure that empty bins are removed
-            maskloc_i = np.intersect1d(range(summaryBinStart[i],summaryBinEnd[i]),self.mask)
-            maskloc_j = np.intersect1d(range(summaryBinStart[j],summaryBinEnd[j]),self.mask)
-            maskloc_i = maskloc_i - summaryBinStart[i]
-            maskloc_j = maskloc_j - summaryBinStart[j]
+            maskloc_i = np.intersect1d(range(istart,iend),mask)
+            maskloc_j = np.intersect1d(range(jstart,jend),mask)
+            maskloc_i = maskloc_i - istart
+            maskloc_j = maskloc_j - iend
             submatrix = np.delete(np.delete(submatrix,maskloc_i,axis=0),maskloc_j,axis=1)
             X[i,j] = X[j,i] = np.median(submatrix)
   
