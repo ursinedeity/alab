@@ -102,8 +102,10 @@ class contactmatrix(object):
 
     def rowsum(self):
         return self.matrix.sum(axis=1)
+        
     def columnsum(self):
         return self.matrix.sum(axis=0)
+        
     def applyed(self,method):
         if method in self._applyedMethods:
             return True
@@ -412,7 +414,7 @@ class contactmatrix(object):
             warnings.warn("Method smoothGenomeWideHighValue was done before, %s %d values smoothed. use force = True to overwrite it."\
                             %(self._applyedMethods['smoothGenomeWide'][1],self._applyedMethods['smoothGenomeWide'][0]))
     #==============================================================Probabiliy matrix methods
-    def getDomainMatrix(self,domainChrom,domainStartPos,domainEndPos,rowmask,minSize=1,maxSize=None):
+    def getDomainMatrix(self,domainChrom,domainStartPos,domainEndPos,minSize=1,maxSize=None):
         """
         Return a submatrix defined by domainChrom, domainStartPos, domainEndPos
         Parameters:
@@ -439,7 +441,7 @@ class contactmatrix(object):
                 return None
         else:
             return None
-        maskloc = np.intersect1d(range(domainStartBin,domainEndBin),rowmask)
+        maskloc = np.intersect1d(range(domainStartBin,domainEndBin),self.mask)
         maskloc = maskloc - domainStartBin
         newmatrix = np.delete(np.delete(newmatrix,maskloc,axis=0),maskloc,axis=1)
         return newmatrix
@@ -479,9 +481,11 @@ class contactmatrix(object):
             skipDomains = 0
             print "Including Off Diagonal %d" %(offdiag)
             
-            rowmask = np.flatnonzero(self.rowsum() == 0) #removed bins
+            #rowmask = np.flatnonzero(self.rowsum() == 0) #removed bins
+            self._getMask()#removed bins in self.mask
+            
             for domainRec in self.domainIdx:
-                domainMatrix = self.getDomainMatrix(domainRec['chrom'],domainRec['start'],domainRec['end'],rowmask,minSize,maxSize)#domain matrix, eliminating domains that are larger than 20 bins
+                domainMatrix = self.getDomainMatrix(domainRec['chrom'],domainRec['start'],domainRec['end'],minSize,maxSize)#domain matrix, eliminating domains that are larger than 20 bins
                 if domainMatrix is None:
                     skipDomains += 1
                     continue
@@ -578,14 +582,16 @@ class contactmatrix(object):
             chrStartBin,chrEndBin = self.range(self.domainIdx[i]['chrom'])
             summaryBinStart[i]    = chrStartBin + int(self.domainIdx[i]['start'] / float(self.resolution))
             summaryBinEnd[i]      = chrStartBin + int(np.ceil(self.domainIdx[i]['end'] / float(self.resolution)))
-            
+        
+        self._getMask()#removed bins in self.mask
+        
         if method == 'topmean':
             from numutils import generateTopMeanSummaryMatrix
-            domainLevelMatrix.matrix = generateTopMeanSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,top=top)
+            domainLevelMatrix.matrix = generateTopMeanSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,top=top,mask=self.mask)
             domainLevelMatrix._applyedMethods['domainLevel'] = "%s/top=%d%s" % (method,top,'%')
         elif method == 'median':
             from numutils import generateMedianSummaryMatrix
-            domainLevelMatrix.matrix = generateMedianSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd)
+            domainLevelMatrix.matrix = generateMedianSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,mask=self.mask)
             domainLevelMatrix._applyedMethods['domainLevel'] = "%s" % (method)
         
         return domainLevelMatrix
