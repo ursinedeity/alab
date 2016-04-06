@@ -555,7 +555,45 @@ class contactmatrix(object):
         if not isinstance(domain,bedgraph):
             raise TypeError,"Bedgraph instance required, see alab.files.bedgraph for more details"
         self.domainIdx = domain.filter(pattern)
-    
+        
+    def _generateMedianSummaryMatrix(self,summaryBinStart,summaryBinEnd):
+        N = len(summaryBinStart)
+        X = np.empty((N,N),np.float32)
+        for i in range(N):
+            print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
+            istart = int(summaryBinStart[i])
+            iend   = int(summaryBinEnd[i])
+            for j in range(i,N):
+                #print "Filling X[%d] from A[:,%d] to A[:,%d]" % (i,summaryBinStart[j],summaryBinEnd[j]-1)
+                jstart = int(summaryBinStart[j])
+                jend   = int(summaryBinEnd[j])
+                submatrix = self.matrix[istart:iend,jstart:jend]
+                #making sure that empty bins are removed
+                out = np.nanmedian(submatrix)
+                if np.isnan(out):
+                    out = 0
+                X[i,j] = X[j,i] = out
+        return X
+        
+    def _generateTopMeanSummaryMatrix(self,summaryBinStart,summaryBinEnd,top=10):
+        N = len(summaryBinStart)
+        X = np.empty((N,N),np.float32)
+        for i in range(N):
+            print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
+            istart = int(summaryBinStart[i])
+            iend   = int(summaryBinEnd[i])
+            for j in range(i,N):
+                jstart = int(summaryBinStart[j])
+                jend   = int(summaryBinEnd[j])
+                submatrix = self.matrix[istart:iend,jstart:jend]
+                bound = np.nanpercentile(submatrix,100-top)
+                if np.isnan(bound):
+                    out = 0
+                else:
+                    out = np.mean(submatrix[submatrix>=bound])
+                X[i,j] = X[j,i] = out
+        return X
+        
     def makeDomainLevelMatrix(self,method='median',top=10):
         """
             Use domain INFO to generate Domain level matrix
@@ -584,14 +622,13 @@ class contactmatrix(object):
             summaryBinEnd[i]      = chrStartBin + int(np.ceil(self.domainIdx[i]['end'] / float(self.resolution)))
         
         self._getMask()#removed bins in self.mask
-        
+        self.matrix[self.mask,:] = np.nan
+        self.matrix[:,self.mask] = np.nan
         if method == 'topmean':
-            from numutils import generateTopMeanSummaryMatrix
-            domainLevelMatrix.matrix = generateTopMeanSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,top=top,mask=self.mask)
+            domainLevelMatrix.matrix = self._generateTopMeanSummaryMatrix(summaryBinStart,summaryBinEnd,top=top)
             domainLevelMatrix._applyedMethods['domainLevel'] = "%s/top=%d%s" % (method,top,'%')
         elif method == 'median':
-            from numutils import generateMedianSummaryMatrix
-            domainLevelMatrix.matrix = generateMedianSummaryMatrix(self.matrix,summaryBinStart,summaryBinEnd,mask=self.mask)
+            domainLevelMatrix.matrix = self._generateMedianSummaryMatrix(summaryBinStart,summaryBinEnd)
             domainLevelMatrix._applyedMethods['domainLevel'] = "%s" % (method)
         
         return domainLevelMatrix

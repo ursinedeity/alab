@@ -164,7 +164,7 @@ def generateTopMeanSummaryMatrix(A,summaryBinStart,summaryBinEnd,top,mask):
             maskloc_i = np.intersect1d(range(istart,iend),mask)
             maskloc_j = np.intersect1d(range(jstart,jend),mask)
             maskloc_i = maskloc_i - istart
-            maskloc_j = maskloc_j - iend
+            maskloc_j = maskloc_j - jstart
             submatrix = np.delete(np.delete(submatrix,maskloc_i,axis=0),maskloc_j,axis=1)
             X[i,j] = X[j,i] = np.mean(submatrix[submatrix >= bound])
   
@@ -185,17 +185,20 @@ def generateMedianSummaryMatrix(A,summaryBinStart,summaryBinEnd,mask):
         #print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
         istart = int(summaryBinStart[i])
         iend   = int(summaryBinEnd[i])
+        maskloc_i = np.intersect1d(range(istart,iend),mask)
+        maskloc_i = maskloc_i - istart
         for j in range(i,N):
             jstart = int(summaryBinStart[j])
             jend   = int(summaryBinEnd[j])
             submatrix = _A[istart:iend,jstart:jend]
             #making sure that empty bins are removed
-            maskloc_i = np.intersect1d(range(istart,iend),mask)
             maskloc_j = np.intersect1d(range(jstart,jend),mask)
-            maskloc_i = maskloc_i - istart
-            maskloc_j = maskloc_j - iend
+            maskloc_j = maskloc_j - jstart
             submatrix = np.delete(np.delete(submatrix,maskloc_i,axis=0),maskloc_j,axis=1)
-            X[i,j] = X[j,i] = np.median(submatrix)
+            if min(submatrix.shape) == 0:
+                X[i,j] = X[j,i] = 0
+            else:
+                X[i,j] = X[j,i] = np.median(submatrix)
   
     return X
 
