@@ -657,7 +657,7 @@ class contactmatrix(object):
         return domainLevelMatrix
         
     #==============================================================plotting methods
-    def plot(self,figurename,log=True,**kwargs):
+    def plot(self,figurename,log=False,**kwargs):
         """
             plot the matrix heat map
             Parameters:
