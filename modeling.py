@@ -149,7 +149,7 @@ class tadmodel(object):
         self.restraints.add_restraint(self.nucleusEnvelopeRestraint) #2
         return self.nucleusEnvelopeRestraint
     
-    def set_consecutiveBeads(self,lowprob=0.5):
+    def set_consecutiveBeads(self,lowprob=0.875):
         # Setup consecutive bead upper bound constraints
         self.consecutiveBeadRestraints = self._get_consecutiveBeadRestraints(lowprob=lowprob,kspring=10)
         for rs in self.consecutiveBeadRestraints: #3
@@ -230,7 +230,7 @@ class tadmodel(object):
         pr = IMP.core.PairRestraint(self.model,ds,IMP.ParticlePair(self.chain.get_indexes()[bead1],self.chain.get_indexes()[bead2]),restraintName)
         return pr
     
-    def _get_consecutiveBeadRestraints(self,lowprob=0.1,kspring=10):
+    def _get_consecutiveBeadRestraints(self,lowprob=0.875,kspring=10):
         """
             calculate distance constraints to consecutive beads
             Parameters:
@@ -256,16 +256,18 @@ class tadmodel(object):
             consecRestraints.append(rs1)
             consecRestraints.append(rs2)
             
-            if i>0 and self.probmat.idx[i]['chrom'] == self.probmat.idx[i-1]['chrom'] and self.probmat.idx[i]['flag']!="domain" and self.probmat.idx[i-1]!="gap":
-                p = max(self.probmat.matrix[i-1,i+1],lowprob)
-                b1 = i-1;b2 = i+1
-                b3 = b1 + self.nbead
-                b4 = b2 + self.nbead
-                consecDist = consecutiveDistanceByProbability(self.beadRadius[b1],self.beadRadius[b2],p,self.contactRange+1)
-                rs1 = self._get_beadDistanceRestraint(b1,b2,consecDist,kspring) 
-                rs2 = self._get_beadDistanceRestraint(b3,b4,consecDist,kspring) 
-                consecRestraints.append(rs1)
-                consecRestraints.append(rs2)
+            #remove this part because we set lowprob=0.875
+            
+            #if i>0 and self.probmat.idx[i]['chrom'] == self.probmat.idx[i-1]['chrom'] and self.probmat.idx[i]['flag']!="domain" and self.probmat.idx[i-1]!="gap":
+                #p = max(self.probmat.matrix[i-1,i+1],lowprob)
+                #b1 = i-1;b2 = i+1
+                #b3 = b1 + self.nbead
+                #b4 = b2 + self.nbead
+                #consecDist = consecutiveDistanceByProbability(self.beadRadius[b1],self.beadRadius[b2],p,self.contactRange+1)
+                #rs1 = self._get_beadDistanceRestraint(b1,b2,consecDist,kspring) 
+                #rs2 = self._get_beadDistanceRestraint(b3,b4,consecDist,kspring) 
+                #consecRestraints.append(rs1)
+                #consecRestraints.append(rs2)
             #---
         #-------
         return consecRestraints
