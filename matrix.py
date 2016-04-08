@@ -575,7 +575,7 @@ class contactmatrix(object):
                 X[i,j] = X[j,i] = out
         return X
         
-    def _generateTopMeanSummaryMatrix(self,summaryBinStart,summaryBinEnd,top=10):
+    def _generateTopMeanSummaryMatrix(self,summaryBinStart,summaryBinEnd,top=10,removeOutlier=True):
         N = len(summaryBinStart)
         X = np.empty((N,N),np.float32)
         for i in range(N):
@@ -585,16 +585,22 @@ class contactmatrix(object):
             for j in range(i,N):
                 jstart = int(summaryBinStart[j])
                 jend   = int(summaryBinEnd[j])
-                submatrix = self.matrix[istart:iend,jstart:jend]
-                bound = np.nanpercentile(submatrix,100-top)
-                if np.isnan(bound):
+                submatrix = self.matrix[istart:iend,jstart:jend].flatten()
+                submatrix = submatrix[~np.isnan(submatrix)] #get all non-nan value
+                if len(submatrix) < 1:
                     out = 0
                 else:
+                    if removeOutlier:
+                        lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(submatrix)
+                        submatrix = submatrix[(submatrix>=lowerFence) & (submatrix<=upperFence)]
+                    else:
+                        pass
+                    bound = np.percentile(submatrix,100-top)
                     out = np.mean(submatrix[submatrix>=bound])
                 X[i,j] = X[j,i] = out
         return X
         
-    def makeDomainLevelMatrix(self,method='median',top=10):
+    def makeDomainLevelMatrix(self,method='topmean',top=10,removeOutlier=True):
         """
             Use domain INFO to generate Domain level matrix
             Parameters:
@@ -625,7 +631,7 @@ class contactmatrix(object):
         self.matrix[self.mask,:] = np.nan
         self.matrix[:,self.mask] = np.nan
         if method == 'topmean':
-            domainLevelMatrix.matrix = self._generateTopMeanSummaryMatrix(summaryBinStart,summaryBinEnd,top=top)
+            domainLevelMatrix.matrix = self._generateTopMeanSummaryMatrix(summaryBinStart,summaryBinEnd,top,removeOutlier)
             domainLevelMatrix._applyedMethods['domainLevel'] = "%s/top=%d%s" % (method,top,'%')
         elif method == 'median':
             domainLevelMatrix.matrix = self._generateMedianSummaryMatrix(summaryBinStart,summaryBinEnd)
