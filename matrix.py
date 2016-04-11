@@ -603,11 +603,12 @@ class contactmatrix(object):
     def makeDomainLevelMatrix(self,method='topmean',top=10,removeOutlier=True):
         """
             Use domain INFO to generate Domain level matrix
-            Parameters:
-            -----------
-            method:
-            top: int 0<top<100
+            Parameters
+            ----------
+            method : string, "topmean" or "median"
+            top : int 0<top<100
                 the top percentage to calculate the mean, top=10 means top 10% of the subdomain matrix
+            removeOutlier : option to remove outlier using 1.5IQR
         """
         if self.applyed('domainLevel'):
             raise RuntimeError, "This is already a domain level matrix!"
