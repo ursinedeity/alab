@@ -31,8 +31,8 @@ import h5py
 import copy
 import cPickle
 import warnings
-from alab.plots import plotxy, plotmatrix, histogram
-import alab.utils
+from plots import plotxy, plotmatrix, histogram
+import utils
 
 class contactmatrix(object):
     _idxdtype = np.dtype([('chrom','S30'),('start',int),('end',int),('flag','S30')])
@@ -78,7 +78,7 @@ class contactmatrix(object):
         if isinstance(genome,str) and isinstance(resolution,int):
             if hasattr(self,"genome") and hasattr(self,"resolution"):
                 raise RuntimeError, "Genome and resolution has already been specified."
-            genomedb    = alab.utils.genome(genome,usechr=usechr)
+            genomedb    = utils.genome(genome,usechr=usechr)
             bininfo     = genomedb.bininfo(resolution)
             flaglist    = ['' for i in range(len(bininfo.chromList))]
             self.genome = genome
@@ -150,7 +150,7 @@ class contactmatrix(object):
         ------
         bin indexes array, or None if there is no valid ones
         """
-        return alab.utils.intersectMatrixIndex(self.idx,chrom,start,end)
+        return utils.intersectMatrixIndex(self.idx,chrom,start,end)
     
     #=========================================================filtering methods
     def removeDiagonal(self,force = False):
@@ -180,7 +180,7 @@ class contactmatrix(object):
             for i in mask:
                 if rowsum[i] == 0:
                     continue
-                split = alab.utils.binomialSplit(self.matrix[i])
+                split = utils.binomialSplit(self.matrix[i])
                 corr,pvalue  = pearsonr(split[0],split[1])#returns corr
                 rowentropy   = entropy(self.matrix[i])
                 if pvalue > usepvalue:
@@ -212,7 +212,7 @@ class contactmatrix(object):
         repeatResults = np.zeros((N,interflatten.max()),dtype=int)
         for i in range(N):
             tmpChoice = np.random.choice(interflatten,len(interflatten))
-            repeatResults[i] = alab.utils.listadd(repeatResults[i],np.histogram(tmpChoice,tmpChoice.max())[0])
+            repeatResults[i] = utils.listadd(repeatResults[i],np.histogram(tmpChoice,tmpChoice.max())[0])
       
         comparison = np.std(repeatResults,axis=0) >= originHist/2
         i = len(comparison) -1
@@ -229,7 +229,7 @@ class contactmatrix(object):
             x, y = np.nonzero(intermask)
             pos  = np.flatnonzero(self.matrix[intermask] > cutoff)
             for i in pos:
-                cnew = alab.utils.powerLawSmooth(self.matrix[ x[i]-w:x[i]+w+1 , y[i]-w:y[i]+w+1 ],(w,w),w,s,p)
+                cnew = utils.powerLawSmooth(self.matrix[ x[i]-w:x[i]+w+1 , y[i]-w:y[i]+w+1 ],(w,w),w,s,p)
                 print x[i],y[i],self.matrix[x[i],y[i]],'-->',cnew
                 self.matrix[x[i],y[i]] = cnew
                 self.matrix[y[i],x[i]] = cnew
@@ -253,7 +253,7 @@ class contactmatrix(object):
             but this will slowdown the process a little bit.     
         """
         if (not self.applyed('normalization')) or force:
-            from alab.norm import bnewt
+            from norm import bnewt
             self._getMask(mask)
             x = bnewt(self.matrix,mask=self.mask,check=0,**kwargs)*100
             self.matrix *= x 
@@ -282,7 +282,7 @@ class contactmatrix(object):
       
     def icenorm(self,mask = None,force=False):
         if (not self.applyed('normalization')) or force:
-            from alab.numutils import ultracorrectSymmetricWithVector
+            from numutils import ultracorrectSymmetricWithVector
             if mask is None:
                 self._getMask(mask)
             else:
@@ -306,7 +306,7 @@ class contactmatrix(object):
             skipping the normalization step, the matrix will not be affected
         """
         if (not self.applyed('diagnorm')) or force:
-            from alab.norm import diagnorm
+            from norm import diagnorm
             self.matrix, diagMean, diagSum, diagCount = diagnorm(self.matrix,countzero,norm)
             if norm:
                 self._applyedMethods['diagnorm'] = [diagMean,diagSum,diagCount]
@@ -401,7 +401,7 @@ class contactmatrix(object):
                 for column in range(row,len(chrlist)):
                     cstart,cend           = self.range(chrlist[column])
                     print "Smoothing block (%s,%s)" % (chrlist[row],chrlist[column])
-                    tmpMatrix,smoothedCounts = alab.utils.smoothSpikesInBlock(self.matrix[rstart:rend,cstart:cend],w,s,p,z)
+                    tmpMatrix,smoothedCounts = utils.smoothSpikesInBlock(self.matrix[rstart:rend,cstart:cend],w,s,p,z)
                     self.matrix[rstart:rend,cstart:cend] = tmpMatrix
                     self.matrix[cstart:cend,rstart:rend] = tmpMatrix.T
                     if row == column:
@@ -496,12 +496,12 @@ class contactmatrix(object):
             if removeZero:
                 print "Removing zeros"
                 upperTriangle = upperTriangle[upperTriangle > 0]
-            lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(upperTriangle)#get quartiles and fence
+            lowerFence,Q1,Q2,Q3,upperFence = utils.boxplotStats(upperTriangle)#get quartiles and fence
             print lowerFence,Q1,Q2,Q3,upperFence
             if boxplotTrim:
                 print "Trimming outliers"
                 upperTriangle = upperTriangle[(upperTriangle > lowerFence) & (upperTriangle < upperFence)] #trim to better range
-                lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(upperTriangle)#get quartiles and fence
+                lowerFence,Q1,Q2,Q3,upperFence = utils.boxplotStats(upperTriangle)#get quartiles and fence
                 print lowerFence,Q1,Q2,Q3,upperFence
             if target == "median":
                 fmax = Q2#get median
@@ -551,7 +551,7 @@ class contactmatrix(object):
             pattern:str
                 a string use to filter the flags in the bedgraph
         """
-        from alab.files import bedgraph
+        from files import bedgraph
         if not isinstance(domain,bedgraph):
             raise TypeError,"Bedgraph instance required, see alab.files.bedgraph for more details"
         self.domainIdx = domain.filter(pattern)
@@ -591,7 +591,7 @@ class contactmatrix(object):
                     out = 0
                 else:
                     if removeOutlier:
-                        lowerFence,Q1,Q2,Q3,upperFence = alab.utils.boxplotStats(submatrix)
+                        lowerFence,Q1,Q2,Q3,upperFence = utils.boxplotStats(submatrix)
                         submatrix = submatrix[(submatrix>=lowerFence) & (submatrix<=upperFence)]
                     else:
                         pass
@@ -730,8 +730,8 @@ class contactmatrix(object):
         for chrom in np.unique(self.idx['chrom']):
             tmpMatrix = self.makeIntraMatrix(chrom)
             sums, counts = tmpMatrix.diagnorm(norm=False)[1:3] #skip the division step
-            TotalSums   = alab.utils.listadd(TotalSums,sums)
-            TotalCounts = alab.utils.listadd(TotalCounts,counts)
+            TotalSums   = utils.listadd(TotalSums,sums)
+            TotalCounts = utils.listadd(TotalCounts,counts)
         HiCscore = TotalSums/TotalCounts
         dist = np.empty(len(HiCscore))
         for i in range(len(HiCscore)):

@@ -30,9 +30,9 @@ import numpy as np
 import os.path
 import h5py
 import cPickle as pickle
-import alab.matrix
-import alab.utils
-import alab.files
+import matrix
+import utils
+import files
 import copy
 
 class structuresummary(object):
@@ -51,7 +51,7 @@ class structuresummary(object):
             #the target is a valid population structure directory
             if usegrp==None:
                 raise RuntimeError, "group key is not specified!"
-            firststr    = alab.files.modelstructures(os.path.join(target,"copy0.hms"),[usegrp])
+            firststr    = files.modelstructures(os.path.join(target,"copy0.hms"),[usegrp])
             self.idx    = firststr.idx
             self.genome = firststr.genome
             self.usegrp = usegrp
@@ -129,7 +129,7 @@ class structuresummary(object):
             try:
                 if not silence:
                     print(i)
-                sts = alab.files.modelstructures(os.path.join(target,'copy'+str(i)+'.hms'),[usegrp])
+                sts = files.modelstructures(os.path.join(target,'copy'+str(i)+'.hms'),[usegrp])
                 
                 modelcoor[i][:] = sts[0].xyz
                 score_shared[i] = sts[0].score
@@ -164,7 +164,7 @@ class structuresummary(object):
         ------
         Bin indexes array, or None if there is no valid ones
         """
-        return alab.utils.intersectMatrixIndex(self.idx,chrom,start,end)
+        return utils.intersectMatrixIndex(self.idx,chrom,start,end)
     
     @property
     def totalRestraints(self):
@@ -198,7 +198,7 @@ class structuresummary(object):
         Return contact matrix format contact heatmap
         """
         from scipy.spatial import distance
-        modelmap        = alab.matrix.contactmatrix(self.nbead)
+        modelmap        = matrix.contactmatrix(self.nbead)
         modelmap.idx    = copy.deepcopy(self.idx)
         modelmap.genome = copy.deepcopy(self.genome)
         modelmap.resolution = None
@@ -319,8 +319,8 @@ class structuresummary(object):
         for i in range(self.nstruct):
             xyzA = self.coordinates[i][Aids]
             xyzB = self.coordinates[i][Bids]
-            comA = alab.utils.centerOfMass(xyzA,self.radius[Aids])
-            comB = alab.utils.centerOfMass(xyzB,self.radius[Bids])
+            comA = utils.centerOfMass(xyzA,self.radius[Aids])
+            comB = utils.centerOfMass(xyzB,self.radius[Bids])
             
             radial[i*2]   = np.linalg.norm(comA)/nucleusRadius
             radial[i*2+1] = np.linalg.norm(comB)/nucleusRadius

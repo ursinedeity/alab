@@ -28,8 +28,8 @@ __license__ = "GPL"
 __version__ = "0.0.1"
 __email__   = "nhua@usc.edu"
 
-import alab.matrix
-import alab.utils
+import matrix
+import utils
 import time
 import numpy as np
 import IMP
@@ -45,7 +45,7 @@ import re
 
 class tadmodel(object):
     def __init__(self,probfile,radNucleus=5000.0,contactRange=1,level=None,record=-1):
-        self.probmat = alab.matrix.contactmatrix(probfile)
+        self.probmat = matrix.contactmatrix(probfile)
         self.nbead   = len(self.probmat)
         #setup log
         LEVELS={'debug':logging.DEBUG,'info':logging.INFO,'warning':logging.WARNING,'error':logging.ERROR,'critical':logging.CRITICAL}
@@ -79,7 +79,7 @@ class tadmodel(object):
         #diploid Rb; 2xtotal haploid beads 
         self.beadRadius = self.beadRadius + self.beadRadius
         # Chromosome territory apply
-        self.genome = alab.utils.genome(self.probmat.genome)
+        self.genome = utils.genome(self.probmat.genome)
         cscale=1.0
         chrvol = nucvol * self.genome.info['length']/sum(self.genome.info['length'])/2
         self.chromRadius=cscale*((chrvol/4*3/3.1415)**(1./3.))
@@ -378,8 +378,8 @@ class tadmodel(object):
         except:
             s = o.optimize(step)
         if not silent:
-            self.logger.info('CG %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
-            print 'CG %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
+            self.logger.info('CG %d steps done @ %.1fs score = %f'%(step,utils.timespend(t0),s))
+            print 'CG %d steps done @ %.1fs score = %f'%(step,utils.timespend(t0),s)
         return s
 
     def mdstep(self,t,step,gamma=0.1,silent=False):
@@ -405,8 +405,8 @@ class tadmodel(object):
             
         o.remove_optimizer_state(md)
         if not silent:
-            self.logger.info('MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
-            print 'MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
+            self.logger.info('MD %d steps done @ %.1fs score = %f'%(step,utils.timespend(t0),s))
+            print 'MD %d steps done @ %.1fs score = %f'%(step,utils.timespend(t0),s)
         return s
     def mdstep_withChromosomeTerritory(self,t,step):
         """
@@ -452,8 +452,8 @@ class tadmodel(object):
         #---
         #s = mdstep(model,chain,sf,t,1000)
         self.updateScoringFunction()
-        self.logger.info('CT-MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s))
-        print 'CT-MD %d steps done @ %.1fs score = %f'%(step,alab.utils.timespend(t0),s)
+        self.logger.info('CT-MD %d steps done @ %.1fs score = %f'%(step,utils.timespend(t0),s))
+        print 'CT-MD %d steps done @ %.1fs score = %f'%(step,utils.timespend(t0),s)
         return s
     def SimulatedAnnealing(self,hot,cold,nc=10,nstep=500):
         """
@@ -464,11 +464,11 @@ class tadmodel(object):
         for i in range(nc):
             t = hot-dt*i
             s = self.mdstep(t,nstep,silent=True)
-            self.logger.info("      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,alab.utils.timespend(t0),s))
-            print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,alab.utils.timespend(t0),s)
+            self.logger.info("      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,utils.timespend(t0),s))
+            print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(t,nstep,utils.timespend(t0),s)
         s= self.mdstep(cold,nstep,silent=True)
-        self.logger.info("      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,alab.utils.timespend(t0),s))
-        print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,alab.utils.timespend(t0),s)
+        self.logger.info("      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,utils.timespend(t0),s))
+        print "      Temp=%d Step=%d Time=%.1fs Score = %.8f"%(cold,nstep,utils.timespend(t0),s)
         self.cgstep(100,silent=True)
 
     def SimulatedAnnealing_Scored(self,hot,cold,nc=10,nstep=500,lowscore=10):
@@ -479,15 +479,15 @@ class tadmodel(object):
             t = hot-dt*i
             self.mdstep(t,nstep,silent=True)
             score = self.cgstep(100,silent=True)
-            self.logger.info("      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,alab.utils.timespend(t0),score))
-            print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,alab.utils.timespend(t0),score)
+            self.logger.info("      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,utils.timespend(t0),score))
+            print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(t,nstep,utils.timespend(t0),score)
             if score < lowscore:
                 return t,score
                 break
         self.mdstep(cold,300,silent=True)
         score = self.cgstep(100,silent=True)
-        self.logger.info("      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score))
-        print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,alab.utils.timespend(t0),score)
+        self.logger.info("      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,utils.timespend(t0),score))
+        print "      Temp=%s Step=%s Time=%.1fs Score=%.8f"%(cold,nstep,utils.timespend(t0),score)
         return t,score
     
     def shrinkingOptimization(self,drange,shrinkScore,minscore,interScale):
