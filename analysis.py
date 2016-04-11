@@ -272,10 +272,32 @@ class structuresummary(object):
         """
         allrp = []
         for i in np.array(beads):
-            rp = np.linalg.norm(self.coordinates[:,i,:],axis=1).mean() / nucleusRadius
+            rp = np.linalg.norm(self.coordinates[:,i,:],axis=1) / nucleusRadius
             allrp.append(rp)
         return np.array(allrp)
     
+    def getABCopyMeanBeadRadialPosition(self,nucleusRadius=5000.0):
+        """
+        Calculate mean radial position for every bead in structures, and differentiate diploid copy into A/B by inner or outer radial position
+        
+        Parameters:
+        -----------
+        nucleusRadius : radius of nucleus, default 5000(nm)
+        
+        Return
+        ------
+        Two 1-D array : mean radian position for all beads, and first array contains the inner bead in the diploid genome.
+        """
+        
+        rpA = self.getBeadRadialPosition(range(self.nbead),nucleusRadius)
+        rpB = self.getBeadRadialPosition(range(self.nbead,self.nbead*2),nucleusRadius)
+        
+        rp = np.array([rpA,rpB])
+        rp.sort(axis=0) #sort 
+        rpmean = rp.mean(axis=2)
+        
+        return rpmean[0],rpmean[1]
+            
     def getChromosomeRadialPosition(self,chrom,nucleusRadius=5000.0):
         """
         Calculate radial position for the chrom
