@@ -772,8 +772,8 @@ class contactmatrix(object):
         """
             Save the matrix along with information in hdf5 file
         """
-        if (filename[-5:] != '.hdf5'):
-            filename += '.hdf5'
+        if (filename[-5:] != '.hmat'):
+            filename += '.hmat'
         h5f = h5py.File(filename, 'w')
         h5f.create_dataset('matrix', data=self.matrix, compression = 'gzip', compression_opts=9)
         h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
