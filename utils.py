@@ -33,12 +33,11 @@ import warnings
 import numpy as np
 from collections import namedtuple
 from aio import loadstream
-import alab
 
 #===========================================================================
 class genome(object):
     def __init__(self,genomeName,usechr=['#','X']):
-        datafile = os.path.join(alab.__path__[0],'genomes/' + genomeName + '.info')
+        datafile = os.path.join(os.path.dirname(os.path.abspath(__file__)),'genomes/' + genomeName + '.info')
         f = loadstream(datafile)
         self.info = np.genfromtxt(f,dtype=[('chrom','S30'),('length',int)])
         f.close() 
