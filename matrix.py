@@ -35,6 +35,25 @@ from plots import plotxy, plotmatrix, histogram
 import utils
 
 class contactmatrix(object):
+    """
+    A flexible matrix instant that supports various methods for processing HiC contacts
+    
+    Parameters:
+    -----------
+    filename : matrix file stored in hdf5 format
+               or an integer for the matrix size to initialize an empty matrix instance
+    genome : string for a genome e.g.'hg19','mm9'
+    resolution : int, the resolution for the hic matrix e.g. 100000
+    usechr : list, containing the chromosomes used for generating the matrix
+    
+    Properities:
+    ------------
+    matrix : numpy 2d array storing all infor for the hic contact matrix
+    idx : numpy structure array for matrix index
+    genome : string, for the genome
+    resolution : resolution for the contact matrix
+    
+    """
     _idxdtype = np.dtype([('chrom','S30'),('start',int),('end',int),('flag','S30')])
     def __init__(self,filename,genome=None,resolution=None,usechr=['#','X']):
         self._applyedMethods = {}
@@ -43,7 +62,7 @@ class contactmatrix(object):
         elif isinstance(filename,str):
             if not os.path.isfile(filename):
                 raise IOError,"File %s doesn't exist!\n" % (filename)
-            if os.path.splitext(filename)[1] == '.hdf5':
+            if os.path.splitext(filename)[1] == '.hdf5' or os.path.splitext(filename)[1] == '.hmat':
                 h5f = h5py.File(filename,'r')
                 self.matrix = h5f['matrix'][:]
                 self.idx    = h5f['idx'][:]
