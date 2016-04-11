@@ -44,7 +44,22 @@ from cStringIO import StringIO
 import re
 
 class tadmodel(object):
-    def __init__(self,probfile,radNucleus=5000.0,contactRange=1,level=None,record=-1):
+    """
+    A wrapper to do IMP modeling in TAD level beads
+    
+    Parameters
+    ----------
+    probfile : alab.matrix.contactmatrix instant, probability matrix at TAD level, alab.matrix.contactmatrix hdf5 format is required
+    nucleusRadius : float, radius of nucleus, default 5000(nm)
+    contactRange : int, folds for surface-surface contact coefficient
+    level : loglevel, 
+            default:None will record everything during caculation
+            debug, info, warning, error, critical are supported
+    record : int, step size if you want to record the trajectory
+            -1 means not recording
+            the recored steps will saved in self.record
+    """
+    def __init__(self,probfile,nucleusRadius=5000.0,contactRange=1,level=None,record=-1):
         self.probmat = matrix.contactmatrix(probfile)
         self.nbead   = len(self.probmat)
         #setup log
@@ -63,7 +78,7 @@ class tadmodel(object):
             self.record = []
         #CONST
         rscale               = 1.38                  # 20% occupancy
-        self.nucleusRadius   = radNucleus            # nm
+        self.nucleusRadius   = nucleusRadius         # nm
         cdensity             = 107.45                # bp/nm assuming 197 bp/nucleosomes and 6 nucleosome/11 nm
         kscale               = (0.75*15**2)**(1.0/3.0) # 3/4*r**2 where r=15nm
         self.contactRange    = contactRange          # surface to surface distance scale of (r1+r2)
