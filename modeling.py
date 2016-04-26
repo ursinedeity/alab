@@ -341,11 +341,14 @@ class tadmodel(object):
             -----------
             actdist:     Activation distanct array [i,j,dist]
         """
+        from scipy.spatial import distance
         intracontactrs = []
         intercontactrs = []
+        sdist = distance.cdist(self.xyz,self.xyz,'euclidean') - distance.cdist(self.r,-self.r) #surface distance matrix
         for (b1,b2,dcutoff) in actdist:
-            lastdist1 = surfaceDistance(self.chain,(b1,b2))
-            lastdist2 = surfaceDistance(self.chain,(b1+self.nbead,b2+self.nbead))
+            #print (b1,b2,dcutoff)
+            lastdist1 = sdist[b1,b2] #surfaceDistance(self.chain,(b1,b2))
+            lastdist2 = sdist[b1+self.nbead,b2+self.nbead] #surfaceDistance(self.chain,(b1+self.nbead,b2+self.nbead))
             if self.probmat.idx[b1]['chrom'] == self.probmat.idx[b2]['chrom']: #intra chromosome
                 if max(lastdist1,lastdist2) <= dcutoff:
                     rs1 = self._get_beadDistanceRestraint(b1,b2,self.contactRange*(self.beadRadius[b1]+self.beadRadius[b2]),kspring)
@@ -358,8 +361,8 @@ class tadmodel(object):
                     intracontactrs.append(minprrs)
                 #else none contact enfored
             else:
-                lastdist3 = surfaceDistance(self.chain,(b1,b2+self.nbead))
-                lastdist4 = surfaceDistance(self.chain,(b1+self.nbead,b2))
+                lastdist3 = sdist[b1,b2+self.nbead] #surfaceDistance(self.chain,(b1,b2+self.nbead))
+                lastdist4 = sdist[b1+self.nbead,b2] #surfaceDistance(self.chain,(b1+self.nbead,b2))
                 sdists    = sorted([lastdist1,lastdist2,lastdist3,lastdist4])
                 if sdists[1] <= dcutoff:
                     nchoose = 2
