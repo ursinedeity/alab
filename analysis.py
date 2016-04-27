@@ -173,7 +173,7 @@ class structuresummary(object):
         ------
         numpy array : all restraints for each structure
         """
-        return self.interRestraints + self.intraRestraints + self.nbead*2
+        return self.interRestraints + self.intraRestraints
     
     @property
     def totalViolations(self):

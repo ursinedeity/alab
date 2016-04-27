@@ -830,12 +830,12 @@ def compareMatrix(m1,m2,figurename = 'comparison.png',**kwargs):
                 xlab = 'Correlation Coefficient', ylab = 'Frequency',
                 **kwargs)
 #----------------------------------------------------------------------
-def loadh5dict(filename):
+def loadh5dict(filename,usechr=['#','X']):
     h5f    = h5py.File(filename,'r')
     genome           = cPickle.loads(h5f['genome'].value)
     resolution       = cPickle.loads(h5f['resolution'].value)
     #genomeIdxToLabel = cPickle.loads(h5f['genomeIdxToLabel'].value)
     binNumber        = cPickle.loads(h5f['binNumber'].value)
-    newMatrix = contactmatrix(binNumber,genome,resolution)
+    newMatrix = contactmatrix(binNumber,genome,resolution,usechr=usechr)
     newMatrix.matrix[:] = h5f['heatmap'][:]
     return newMatrix
