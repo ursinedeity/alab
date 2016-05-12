@@ -190,3 +190,46 @@ def plotmatrix(figurename,matrix,format='png',title=None,**kwargs):
         pp.close()
   
     plt.close(fig)
+
+def piechart(figurename,labels,sizes,format='png',title=None,autopct='%1.1f%%',**kwargs):
+    """Plot a pie chart
+    
+    Parameters
+    ----------
+    
+    labels : a 1d array of labels in pie chart
+    sizes : a 1d array of sizes for each label
+    colors : colors for each section
+    explode : "explode" the selected pie
+    autopct : format of percentage
+    shadow : shadow of pie
+    startangle : degrees to start draw the first pie. conter-clockwise e.g 90
+    
+    Example
+    -------
+    labels = 'Frogs', 'Hogs', 'Dogs', 'Logs'
+    sizes = [15, 30, 45, 10]
+    colors = ['yellowgreen', 'gold', 'lightskyblue', 'lightcoral']
+    explode = (0, 0.1, 0, 0)  # only "explode" the 2nd slice (i.e. 'Hogs')
+    autopct = '%1.1f%%'
+    shadow = True
+    startangle = 90
+    
+    """
+    fig  = plt.figure()
+    plt.pie(sizes, labels=labels,autopct = '%1.1f%%',**kwargs)
+    plt.axis('equal')
+    if title != None:
+        plt.title(title)
+        
+    plt.show()
+    
+    if format == 'png':
+        fig.savefig(figurename,dpi=600)
+    elif format == 'pdf':
+        from matplotlib.backends.backend_pdf import PdfPages
+        pp = PdfPages(figurename)
+        pp.savefig(fig,dpi=600)
+        pp.close()
+  
+    plt.close(fig)
