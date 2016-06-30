@@ -579,7 +579,7 @@ class contactmatrix(object):
         N = len(summaryBinStart)
         X = np.empty((N,N),np.float32)
         for i in range(N):
-            print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
+            #print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
             istart = int(summaryBinStart[i])
             iend   = int(summaryBinEnd[i])
             for j in range(i,N):
@@ -598,7 +598,7 @@ class contactmatrix(object):
         N = len(summaryBinStart)
         X = np.empty((N,N),np.float32)
         for i in range(N):
-            print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
+            #print "Filling X[%d] from A[%d] to A[%d]" % (i,summaryBinStart[i],summaryBinEnd[i]-1)
             istart = int(summaryBinStart[i])
             iend   = int(summaryBinEnd[i])
             for j in range(i,N):
