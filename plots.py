@@ -83,36 +83,49 @@ def histogram(figurename, x, binNum, xlab=None, ylab=None, title=None, line=None
     fig.savefig(figurename,dpi=600)
     plt.close(fig)
 
-def plotxy(figurename,x,y,format='png',xlab=None,ylab=None,title=None,xticklabels=None,yticklabels=None,vline=None, hline=None, **kwargs):
+def plotxy(figurename,x,y,format='png',color='blue',linewidth=1,points=False,xlab=None,ylab=None,title=None,xlim=None,ylim=None,grid=False,xticklabels=None,yticklabels=None, vline=None, hline=None,  **kwargs):
     """xy plot
     Parameters:
     -----------
     x,y: dataset used to plot
     format: str
         format to save figure
+    color: drawing color
+    linewidth: 
+    points : True or False, if scatter points are required
+    
     xlab/ylab : string, optional
         label for x/y axis
     title : string, optional
         title of the figure
+    xlim,ylim :tuples for xlim, ylim
     vline/hline: float or array, optional
         draw a vertical/horizontal line at certain position(s)
     xticks/yticks: ticks for x,y axis
     """
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot(x,y,**kwargs)
+    line = ax.plot(x,y,c=color,**kwargs)
+    plt.setp(line,linewidth=linewidth)
+    if points:
+        ax.scatter(x,y, marker='o',c=color,edgecolors=color)
     
     if xlab != None:
         ax.set_xlabel(xlab)
     if ylab != None:
         ax.set_ylabel(ylab)
     if title != None:
-        ax.title(title)
+        ax.set_title(title)
     if xticklabels != None:
         ax.set_xticklabels(xticklabels)
     if yticklabels != None:
         ax.set_yticklabels(yticklabels)
-    
+    if xlim != None:
+        ax.set_xlim(xlim[0],xlim[1])
+    if ylim != None:
+        ax.set_ylim(ylim[0],ylim[1])
+    if grid:
+        ax.grid(True)
     if vline != None:
         for l in np.array([vline]).flatten():
             ax.axvline(l, color='c', linestyle='dashed', linewidth=1)

@@ -33,6 +33,7 @@ import cPickle as pickle
 import matrix
 import utils
 import files
+import plots
 import copy
 
 class structuresummary(object):
@@ -326,7 +327,36 @@ class structuresummary(object):
             radial[i*2+1] = np.linalg.norm(comB)/nucleusRadius
         #-
         return radial
+    
+    def plotRadialPosition(self,figurename,chrom,color='dodgerblue',nucleusRadius=5000.0):
+        """
+        Plot Radial Position of beads for given chromosome
         
+        Parameters
+        ----------
+        figurename : name of the figure
+        chrom : given chromosome name
+        color : given the color for ploting 
+        """
+        Aids = np.flatnonzero(self.idx['chrom'] == chrom)
+        Bids = Aids + self.nbead
+        #calculate average radial position
+        radial = (self.getBeadRadialPosition(Aids,nucleusRadius).mean(axis=1) + self.getBeadRadialPosition(Bids,nucleusRadius).mean(axis=1))/2
+        #calculate midpos
+        mega = 1.e-6
+        midpos = mega*(self.idx[Aids]['end'] + self.idx[Aids]['start'])/2
+        
+        plots.plotxy(figurename,x = midpos,y = radial,
+                     color = 'dodgerblue',
+                     linewidth=2,
+                     points=True,
+                     xlim=(0,np.ceil(self.idx[Aids[-1]]['end']*mega)),
+                     ylim=(0.1,0.9),
+                     xlab='Genome Position(Mb)',
+                     ylab='Radial Position',
+                     title=chrom,
+                     grid=True)
+
     #==========================saving
     def save(self,filename):
         """
