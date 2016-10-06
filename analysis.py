@@ -39,9 +39,9 @@ import copy
 class structuresummary(object):
     """
     This class offers a series of methods to study the model structure populations.
-    parameters:
-    ------------
-    target:    the output directory for population structures, containing copy*.hms files
+    parameters
+    ----------
+    target:    the output directory for population structures, containing copy*.hms files\
                or can be seen as summary file *.hss
                
     usegrp:    the probablility key used in modeling, e.g. p005j
@@ -240,9 +240,9 @@ class structuresummary(object):
         
         Parameters
         ----------
-        form : the return form of the function
-               'list' return the list form
-               'matrix' return the matrix form
+        form : the return form of the function\
+               'list' return the list form\
+               'matrix' return the matrix form\
         """
         pdistMean = np.zeros((2*self.nbead,2*self.nbead))
         for i in range(2*self.nbead):
@@ -281,8 +281,8 @@ class structuresummary(object):
         """
         Calculate mean radial position for every bead in structures, and differentiate diploid copy into A/B by inner or outer radial position
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         nucleusRadius : radius of nucleus, default 5000(nm)
         
         Return

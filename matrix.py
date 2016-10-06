@@ -38,16 +38,16 @@ class contactmatrix(object):
     """
     A flexible matrix instant that supports various methods for processing HiC contacts
     
-    Parameters:
-    -----------
-    filename : matrix file stored in hdf5 format
+    Parameters
+    ----------
+    filename : matrix file stored in hdf5 format\
                or an integer for the matrix size to initialize an empty matrix instance
     genome : string for a genome e.g.'hg19','mm9'
     resolution : int, the resolution for the hic matrix e.g. 100000
     usechr : list, containing the chromosomes used for generating the matrix
     
-    Properities:
-    ------------
+    Attributes
+    ----------
     matrix : numpy 2d array storing all infor for the hic contact matrix
     idx : numpy structure array for matrix index
     genome : string, for the genome
@@ -261,14 +261,14 @@ class contactmatrix(object):
     #========================================================normalization methods
     def krnorm(self,mask = None,force=False,**kwargs):
         """using krnorm balacing the matrix (overwriting the matrix!)
-        Parameters:
-        -----------
+        Parameters
+        ----------
         mask: list/array 
-            mask is a 1-D vector with the same length as the matrix where 1s specify the row/column to be ignored
-            or a 1-D vector specifing the indexes of row/column to be ignored
+            mask is a 1-D vector with the same length as the matrix where 1s specify the row/column to be ignored\
+            or a 1-D vector specifing the indexes of row/column to be ignored\
             if no mask is given, row/column with rowsum==0 will be automatically detected and ignored
         largemem: bool
-            when largemem is set to 1, matrix product is calculated using small chunks, 
+            when largemem is set to 1, matrix product is calculated using small chunks, \
             but this will slowdown the process a little bit.     
         """
         if (not self.applyed('normalization')) or force:
@@ -316,8 +316,8 @@ class contactmatrix(object):
     def diagnorm(self,countzero=False,norm=True,force=False):
         """ This function is to diagnol normalize matrix, 
     
-            Parameters:
-            -----------
+            Parameters
+            ----------
             countzero: bool
             defines if we want to count zero values when calculate diagonal mean or not
             norm: bool
@@ -397,8 +397,8 @@ class contactmatrix(object):
     def smoothGenomeWideHighValue(self,w=3,s=3,p=3,z=5,force=False):
         """
         Use power law smoothing function to smooth high spikes in chromosomes blocks
-        Parameters:
-        -----------
+        Parameters
+        ----------
         w: int of the window size, the smoothing is computed using target +/- w
         s: weight of the location deviation
         p: power of the location deviation
@@ -436,15 +436,15 @@ class contactmatrix(object):
     def getDomainMatrix(self,domainChrom,domainStartPos,domainEndPos,minSize=1,maxSize=None):
         """
         Return a submatrix defined by domainChrom, domainStartPos, domainEndPos
-        Parameters:
-        -----------
+        Parameters
+        ----------
         domainChrom: domain chromosome e.g. 'chr1'
         domainStartPos: int e.g. 0
         domainEndPos: int e.g. 700000
         minSize: int, > 0
             min domain size
         maxSize: int, optional
-            max domain size, in bins
+            max domain size, in bins\
             if the domain is larger than a given number of bins, this function will return None
         """
         chrStartBin,chrEndBin = self.range(domainChrom)
@@ -468,8 +468,8 @@ class contactmatrix(object):
     def getfmax(self,method = 'UF',minSize=1,maxSize=2000,removeZero=False,boxplotTrim=False,offdiag=1,target='median'):
         """
         calculate fmax based on different methods
-        Parameters:
-        -----------
+        Parameters
+        ----------
         method: NM #neighbouring max
                 UF #uniform fmax
         target: 'mean'/'median'
@@ -564,8 +564,8 @@ class contactmatrix(object):
     def assignDomain(self,domain,pattern=''):
         """
             Load Domain information
-            Parameters:
-            -----------
+            Parameters
+            ----------
             domain: alab.files.bedgraph instance
             pattern:str
                 a string use to filter the flags in the bedgraph
@@ -680,8 +680,8 @@ class contactmatrix(object):
     def plot(self,figurename,log=False,**kwargs):
         """
             plot the matrix heat map
-            Parameters:
-            -----------
+            Parameters
+            ----------
             figurename : str
             log: bool
             if True, plot the log scale of the matrix
@@ -717,8 +717,8 @@ class contactmatrix(object):
         """
         Print the rowsum frequency histogram
         
-        Parameters:
-        -----------
+        Parameters
+        ----------
         figurename: string
         Name of the plot
         outlier: bool
@@ -741,8 +741,8 @@ class contactmatrix(object):
     def plotHiCscoreVSDistance(self,figurename=None,background=False,**kwargs):
         """
         plot distal ratio for intra chromosomes
-        Parameters:
-        -----------
+        Parameters
+        ----------
         """
         
         TotalSums   = []
