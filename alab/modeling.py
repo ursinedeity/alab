@@ -84,7 +84,7 @@ class tadmodel(object):
         self.contactRange    = contactRange          # surface to surface distance scale of (r1+r2)
                                                      # for which 2 beads are considered as contact 
         self.occupancy       = chromosomeOccupancy   #chromosome occupancy in nucleus, defined as diploid_domain_total_volume/nuclear_volume
-        self.genome          = alabutils.genome(self.probmat.genome)
+        self.genome          = utils.genome(self.probmat.genome)
         rho                  = (self.occupancy*self.nucleusRadius**3/(2*sum(self.genome.info['length'])))**(1.0/3.0)
         
         #get radius of each bead
