@@ -85,7 +85,7 @@ class tadmodel(object):
                                                      # for which 2 beads are considered as contact 
         self.occupancy       = chromosomeOccupancy   #chromosome occupancy in nucleus, defined as diploid_domain_total_volume/nuclear_volume
         self.genome          = utils.genome(self.probmat.genome)
-        rho                  = (self.occupancy*self.nucleusRadius**3/(2*sum(self.genome.info['length'])))**(1.0/3.0)
+        rho                  = self.occupancy*self.nucleusRadius**3/(2*sum(self.genome.info['length']))
         
         #get radius of each bead
         #self.beadRadius = [rscale * kscale * ((index['end'] - index['start'])/cdensity) ** (1.0/3.0) for index in self.probmat.idx]
