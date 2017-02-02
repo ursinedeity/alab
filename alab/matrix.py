@@ -841,7 +841,7 @@ def loadh5dict(filename,usechr=['#','X']):
     return newMatrix
 
 def loadhic(filename,genome='hg19',resolution=100000,usechr=['#','X']):
-    import .straw
+    from . import straw
     
     genome = utils.genome(genome)
     bininfo = genome.bininfo(resolution)
