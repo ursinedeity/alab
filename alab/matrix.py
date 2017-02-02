@@ -839,3 +839,28 @@ def loadh5dict(filename,usechr=['#','X']):
     newMatrix = contactmatrix(binNumber,genome,resolution,usechr=usechr)
     newMatrix.matrix[:] = h5f['heatmap'][:]
     return newMatrix
+
+def loadhic(filename,genome='hg19',resolution=100000,usechr=['#','X']):
+    import .straw
+    
+    genome = utils.genome(genome)
+    bininfo = genome.bininfo(resolution)
+
+    m = contactmatrix(len(bininfo.chromList),genome=genome,resolution=resolution,usechr=usechr)
+    for chr1 in genome.info['chrom']:
+        i = genome.getchrnum(chr1)
+        for chr2 in genome.info['chrom']:
+            j = genome.getchrnum(chr2)
+            if i > j:
+                continue
+            result = straw.straw("NONE",filename,chr1[3:],chr2[3:],'BP',resolution)
+            for t in range(len(result)):
+                x = int(result[0][t]/resolution) + bininfo.binStart[i]
+                y = int(result[1][t]/resolution) + bininfo.binStart[j]
+                m.matrix[x,y] = result[2][t]
+                m.matrix[y,x] = result[2][t]
+            #-
+        #--
+    #--
+    
+    return m
