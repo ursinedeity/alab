@@ -840,7 +840,7 @@ def loadh5dict(filename,usechr=['#','X']):
     newMatrix.matrix[:] = h5f['heatmap'][:]
     return newMatrix
 
-def loadhic(filename,genome='hg19',resolution=100000,usechr=['#','X']):
+def loadhic(filename,genome='hg19',resolution=100000,usechr=['#','X'],verbose=False):
     from . import straw
     
     genome = utils.genome(genome)
@@ -853,6 +853,9 @@ def loadhic(filename,genome='hg19',resolution=100000,usechr=['#','X']):
             j = genome.getchrnum(chr2)
             if i > j:
                 continue
+            if verbose:
+                print chr1,chr2
+            
             result = straw.straw("NONE",filename,chr1[3:],chr2[3:],'BP',resolution)
             for t in range(len(result)):
                 x = int(result[0][t]/resolution) + bininfo.binStart[i]
