@@ -843,14 +843,14 @@ def loadh5dict(filename,usechr=['#','X']):
 def loadhic(filename,genome='hg19',resolution=100000,usechr=['#','X'],verbose=False):
     from . import straw
     
-    genome = utils.genome(genome)
-    bininfo = genome.bininfo(resolution)
+    tgenome = utils.genome(genome)
+    bininfo = tgenome.bininfo(resolution)
 
     m = contactmatrix(len(bininfo.chromList),genome=genome,resolution=resolution,usechr=usechr)
-    for chr1 in genome.info['chrom']:
-        i = genome.getchrnum(chr1)
-        for chr2 in genome.info['chrom']:
-            j = genome.getchrnum(chr2)
+    for chr1 in tgenome.info['chrom']:
+        i = tgenome.getchrnum(chr1)
+        for chr2 in tgenome.info['chrom']:
+            j = tgenome.getchrnum(chr2)
             if i > j:
                 continue
             if verbose:
