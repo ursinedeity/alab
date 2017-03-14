@@ -886,6 +886,12 @@ def loadcooler(filename,usechr=['#','X'],verbose=False):
     m = contactmatrix(len(bininfo.chromList),genome=genome,resolution=resolution,usechr=usechr)
     m.matrix = sp.toarray()[:len(m.idx),:len(m.idx)].astype(np.float32)
     h5.close()
+    
+    t = m.matrix.diagonal().copy()
+    m.matrix[np.diag_indices(len(m.idx))] = 0
+    m.matrix += m.matrix.T
+    m.matrix[np.diag_indices(len(m.idx))] = t
+    
     return m
 
     
