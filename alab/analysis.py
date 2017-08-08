@@ -29,7 +29,10 @@ __email__   = "nhua@usc.edu"
 import numpy as np
 import os.path
 import h5py
-import cPickle as pickle
+try:
+   import cPickle as pickle
+except:
+   import pickle
 import matrix
 import utils
 import files
@@ -51,7 +54,7 @@ class structuresummary(object):
         if os.path.isdir(target):
             #the target is a valid population structure directory
             if usegrp==None:
-                raise RuntimeError, "group key is not specified!"
+                raise RuntimeError("group key is not specified!")
             firststr    = files.modelstructures(os.path.join(target,"copy0.hms"),[usegrp])
             self.idx    = firststr.idx
             self.genome = firststr.genome
@@ -76,7 +79,7 @@ class structuresummary(object):
             self.intraRestraints       = h5f['intraRestraints'][:]
             self.interRestraints       = h5f['interRestraints'][:]
         else:
-            raise RuntimeError, "Invalid filename or file directory!"
+            raise RuntimeError("Invalid filename or file directory!")
         #-
         return None
     #==============================reading

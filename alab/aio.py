@@ -27,7 +27,10 @@ __email__   = "nhua@usc.edu"
 import numpy as np
 import os.path
 import subprocess
-from cStringIO import StringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 def loadstream(filename):
     """
@@ -35,7 +38,7 @@ def loadstream(filename):
     zipped file are automaticaly unzipped using stream
     """
     if not os.path.isfile(filename):
-        raise IOError,"File %s doesn't exist!\n" % (filename)
+        raise IOError("File %s doesn't exist!\n" % (filename))
     if os.path.splitext(filename)[1] == '.gz':
         p = subprocess.Popen(["zcat", filename], stdout = subprocess.PIPE)
         f = StringIO(p.communicate()[0])

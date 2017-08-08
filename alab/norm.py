@@ -17,6 +17,7 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import division,print_function
 __author__  = "Nan Hua"
 
 __license__ = "GPL"
@@ -54,19 +55,19 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
     # see details in Knight and Ruiz (2012)
     (n,m) = A.shape
     #np.seterr(divide='ignore')
-    print 'Verifying Matrix\n'
+    print('Verifying Matrix\n')
     if (n != m):
-        print 'Matrix must be symmetric to converge\n'
+        print('Matrix must be symmetric to converge\n')
         return 'NaN'
     if (check):
         for i in range(0,n):
             for j in range(i,n):
                 if (A[i][j] != A[j][i])or(A[i][j] < 0):
-                    print 'Matrix must be symmetric and nonnegative to converge\n'
+                    print('Matrix must be symmetric and nonnegative to converge\n')
                     return 'NaN'
-        print 'Check OK\n'
+        print('Check OK\n')
     else:
-        print 'Check escaped\n'
+        print('Check escaped\n')
   
     e        = np.ones((n,1))
     e[mask]  = 0
@@ -166,13 +167,13 @@ def bnewt(A, mask=[], tol = 1e-6, delta_lower = 0.1, delta_upper = 3, fl = 0, ch
         eta = max(min(eta,etamax),stop_tol/res_norm)
     
         if fl == 1:
-            print '%3d %6d %.3f \n' % (i,k,r_norm)
+            print('%3d %6d %.3f \n' % (i,k,r_norm))
       
         if MVP > 50000:
             break
     #end outer
   
-    print 'Matrix vector products = %6d\n' % MVP
+    print('Matrix vector products = %6d\n' % MVP)
     #x = np.array(x)
     #x[mask] = 0
     return x
@@ -219,4 +220,4 @@ if __name__=='__main__':
     A = np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12],[100,200,300,400]])
     #A = np.array([[1,2,3,40],[2,5,6,70],[3,6,8,90],[40,70,90,100]])
     R = krnorm(A)
-    print R
+    print(R)

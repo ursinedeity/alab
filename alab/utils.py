@@ -17,7 +17,7 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+from __future__ import print_function
 __author__  = "Nan Hua"
 
 __license__ = "GPL"
@@ -147,7 +147,7 @@ def smoothSpikesInBlock(matrix,w=3,s=3,p=3,z=5):
         
     """
     row,column     = matrix.shape
-    print matrix.shape
+    print(matrix.shape)
     smoothedMatrix = np.copy(matrix)
     smoothedCounts = 0
     for i in range(row):
@@ -198,7 +198,7 @@ def centerOfMass(xyz,r):
     get center of mass of a list of particles, given xyz coordinates and radius
     """
     if len(xyz) != len(r):
-        raise RuntimeError, "Dimension not agree"
+        raise RuntimeError("Dimension not agree")
     mass = r**3
     return np.sum(xyz*mass,axis=0)/sum(mass)
         
@@ -295,7 +295,7 @@ def PCA(A, numPCs=6, verbose=False):
     covM = np.dot(M, M.T)
     [latent, coeff] = scipy.sparse.linalg.eigsh(covM, numPCs)
     if verbose:
-        print "Eigenvalues are:", latent
+        print("Eigenvalues are:", latent)
     return (np.transpose(coeff[:, ::-1]), latent[::-1])
 
 
@@ -313,7 +313,7 @@ def EIG(A, numPCs=3):
     else:
         [latent, coeff] = scipy.sparse.linalg.eigs(M, numPCs)
     alatent = np.argsort(np.abs(latent))
-    print "eigenvalues are:", latent[alatent]
+    print("eigenvalues are:", latent[alatent])
     coeff = coeff[:, alatent]
     return (np.transpose(coeff[:, ::-1]), latent[alatent][::-1])
 

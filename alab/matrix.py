@@ -17,7 +17,7 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+from __future__ import division,print_function
 __author__  = "Nan Hua"
 
 __license__ = "GPL"
@@ -29,7 +29,10 @@ import os.path
 import re
 import h5py
 import copy
-import cPickle
+try:
+   import cPickle as pickle
+except:
+   import pickle
 import warnings
 from plots import plotxy, plotmatrix, histogram
 import utils
@@ -61,7 +64,7 @@ class contactmatrix(object):
             self.matrix=np.zeros((filename,filename),dtype = np.float32)
         elif isinstance(filename,str):
             if not os.path.isfile(filename):
-                raise IOError,"File %s doesn't exist!\n" % (filename)
+                raise IOError("File %s doesn't exist!\n" % (filename))
             if os.path.splitext(filename)[1] == '.hdf5' or os.path.splitext(filename)[1] == '.hmat':
                 h5f = h5py.File(filename,'r')
                 self.matrix = h5f['matrix'][:]
@@ -96,7 +99,7 @@ class contactmatrix(object):
         #----------------end filename
         if isinstance(genome,str) and isinstance(resolution,int):
             if hasattr(self,"genome") and hasattr(self,"resolution"):
-                raise RuntimeError, "Genome and resolution has already been specified."
+                raise RuntimeError("Genome and resolution has already been specified.")
             genomedb    = utils.genome(genome,usechr=usechr)
             bininfo     = genomedb.bininfo(resolution)
             flaglist    = ['' for i in range(len(bininfo.chromList))]
@@ -143,7 +146,7 @@ class contactmatrix(object):
                 self.mask = mask
                 return 1
             else:
-                raise TypeError, "Invalid argument type, numpy.ndarray is required"
+                raise TypeError("Invalid argument type, numpy.ndarray is required")
   
     def __checkGenomeResolution(self,genome,resolution):
         if hasattr(self,"genome") and hasattr(self,"resolution"):
@@ -151,7 +154,7 @@ class contactmatrix(object):
         else:
             warnings.warn("No genome and resolution is specified within the file, try to assign attributes.")
             if (genome is None) or (resolution is None):
-                raise ValueError, "No genome info is found! Genome and resolution parameter must be specified."
+                raise ValueError("No genome info is found! Genome and resolution parameter must be specified.")
             else:
                 self.genome = genome
                 self.resolution = resolution
@@ -204,13 +207,13 @@ class contactmatrix(object):
                 rowentropy   = entropy(self.matrix[i])
                 if pvalue > usepvalue:
                     newmask.append(i)
-                    print i,rowsum[i],(corr,pvalue),"Remove",rowentropy
+                    print(i,rowsum[i],(corr,pvalue),"Remove",rowentropy)
                 else:
-                    print i,rowsum[i],(corr,pvalue),"Keep",rowentropy
+                    print(i,rowsum[i],(corr,pvalue),"Keep",rowentropy)
             self.matrix[newmask,:]    = 0
             self.matrix[:,newmask]    = 0
             self.idx['flag'][newmask] = 'Removed'
-            print "%d low converage bins were removed." % (len(newmask))
+            print("%d low converage bins were removed." % (len(newmask)))
             self._applyedMethods['removePoorRegions'] = (cutoff,len(newmask))
         else:
             warnings.warn("Method removePoorRegions was done before, use force = True to overwrite it.")
@@ -223,7 +226,7 @@ class contactmatrix(object):
         cutoff is set to the number that first consecutive 2 non-spourious frequency from the right side (scan from high frequency to low)
         """
         if self.applyed('normalization'):
-            raise RuntimeError, "Matrix is already normalized, raw matrix is needed."
+            raise RuntimeError("Matrix is already normalized, raw matrix is needed.")
         intermask = self.idx['chrom'][:,None] < self.idx['chrom'][None,:]
         interflatten = self.matrix[intermask]
         interflatten = interflatten[interflatten > 0]
@@ -249,7 +252,7 @@ class contactmatrix(object):
             pos  = np.flatnonzero(self.matrix[intermask] > cutoff)
             for i in pos:
                 cnew = utils.powerLawSmooth(self.matrix[ x[i]-w:x[i]+w+1 , y[i]-w:y[i]+w+1 ],(w,w),w,s,p)
-                print x[i],y[i],self.matrix[x[i],y[i]],'-->',cnew
+                print(x[i],y[i],self.matrix[x[i],y[i]],'-->',cnew)
                 self.matrix[x[i],y[i]] = cnew
                 self.matrix[y[i],x[i]] = cnew
             self._applyedMethods['smoothByCutoff'] = cutoff
@@ -285,7 +288,7 @@ class contactmatrix(object):
         if (not self.applyed('normalization')) or force:
             self._getMask(mask)
             for i in range(iterations):
-                print "\tIterations:",i+1
+                print("\tIterations:",i+1)
                 rowsum   = self.rowsum()
                 rowsum[self.mask] = 0
                 totalsum = rowsum.sum()
@@ -355,7 +358,7 @@ class contactmatrix(object):
         """
         rangeList = np.flatnonzero(self.idx['chrom'] == chrom)
         if len(rangeList)==0:
-            raise ValueError, "%s is not found in the index" %(chrom)
+            raise ValueError("%s is not found in the index" %(chrom))
         else:
             return (rangeList[0],rangeList[-1]+1)
   
@@ -368,7 +371,7 @@ class contactmatrix(object):
         try:
             rstart,rend = self.range(chrom)
         except ValueError:
-            raise ValueError, "%s is not found in the index. Possibly you are not using the genome wide matrix" %(chrom)
+            raise ValueError("%s is not found in the index. Possibly you are not using the genome wide matrix" %(chrom))
         submatrix   = contactmatrix(rend - rstart)
         submatrix.matrix = self.matrix[rstart:rend,rstart:rend]
         submatrix.idx    = np.core.records.fromrecords(self.idx[rstart:rend],dtype=self._idxdtype)
@@ -405,7 +408,7 @@ class contactmatrix(object):
         z: range of standard deviation to set cutoff
         """
         if self.applyed('subMatrix'):
-            raise RuntimeError, "This is a submatrix, genome wide smoothing cannot be applyed."
+            raise RuntimeError("This is a submatrix, genome wide smoothing cannot be applyed.")
         if (not self.applyed('smoothGenomeWide')) or force:
             smoothed = 0
             chrlist = np.unique(self.idx['chrom'])
@@ -419,7 +422,7 @@ class contactmatrix(object):
                 rstart,rend = self.range(chrlist[row])
                 for column in range(row,len(chrlist)):
                     cstart,cend           = self.range(chrlist[column])
-                    print "Smoothing block (%s,%s)" % (chrlist[row],chrlist[column])
+                    print("Smoothing block (%s,%s)" % (chrlist[row],chrlist[column]))
                     tmpMatrix,smoothedCounts = utils.smoothSpikesInBlock(self.matrix[rstart:rend,cstart:cend],w,s,p,z)
                     self.matrix[rstart:rend,cstart:cend] = tmpMatrix
                     self.matrix[cstart:cend,rstart:rend] = tmpMatrix.T
@@ -428,7 +431,7 @@ class contactmatrix(object):
                     else:
                         smoothed += 2*smoothedCounts
             self._applyedMethods['smoothGenomeWide'] = (smoothed,"w=%d,s=%d,p=%d,z=%d" % (w,s,p,z))
-            print "Genomewide smoothing finished, %d contacts smoothed" % (smoothed)
+            print("Genomewide smoothing finished, %d contacts smoothed" % (smoothed))
         else:
             warnings.warn("Method smoothGenomeWideHighValue was done before, %s %d values smoothed. use force = True to overwrite it."\
                             %(self._applyedMethods['smoothGenomeWide'][1],self._applyedMethods['smoothGenomeWide'][0]))
@@ -475,9 +478,9 @@ class contactmatrix(object):
         target: 'mean'/'median'
         """
         if self.applyed('subMatrix'):
-            raise RuntimeError, "This is a submatrix, genome wide fmax cannot be applyed."
+            raise RuntimeError("This is a submatrix, genome wide fmax cannot be applyed.")
         if self.applyed('probabilityMatrix'):
-            raise RuntimeError, "This is already a probability matrix!"
+            raise RuntimeError("This is already a probability matrix!")
 
         fmax = None
     
@@ -491,14 +494,14 @@ class contactmatrix(object):
                 fmax[cend-1] = self.matrix[cend-1,cend-2] #q telomere
         elif method == 'UF':#method uniform fmax
             if not hasattr(self,"domainIdx"):
-                raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
-            print "Using minSize = %d, eliminating domains smaller than %dkb." % (minSize,minSize*self.resolution/1000)
-            print "Using maxSize = %d, eliminating domains larger than %dkb." % (maxSize,maxSize*self.resolution/1000)
+                raise RuntimeError("Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO")
+            print("Using minSize = %d, eliminating domains smaller than %dkb." % (minSize,minSize*self.resolution/1000))
+            print("Using maxSize = %d, eliminating domains larger than %dkb." % (maxSize,maxSize*self.resolution/1000))
       
             #Get all intra domain interactions (upper triangle)
             upperTriangle = []
             skipDomains = 0
-            print "Including Off Diagonal %d" %(offdiag)
+            print("Including Off Diagonal %d" %(offdiag))
             
             #rowmask = np.flatnonzero(self.rowsum() == 0) #removed bins
             self._getMask()#removed bins in self.mask
@@ -510,26 +513,26 @@ class contactmatrix(object):
                     continue
                 upperTriangle.extend(domainMatrix[np.triu_indices(len(domainMatrix),offdiag)])#get the upper triangle
             #--------scaning finished
-            print "%d domains are scanned, %d domains are eliminated." % (len(self.domainIdx),skipDomains)
+            print("%d domains are scanned, %d domains are eliminated." % (len(self.domainIdx),skipDomains))
             upperTriangle = np.array(upperTriangle)
             if removeZero:
-                print "Removing zeros"
+                print("Removing zeros")
                 upperTriangle = upperTriangle[upperTriangle > 0]
             lowerFence,Q1,Q2,Q3,upperFence = utils.boxplotStats(upperTriangle)#get quartiles and fence
-            print lowerFence,Q1,Q2,Q3,upperFence
+            print(lowerFence,Q1,Q2,Q3,upperFence)
             if boxplotTrim:
-                print "Trimming outliers"
+                print("Trimming outliers")
                 upperTriangle = upperTriangle[(upperTriangle > lowerFence) & (upperTriangle < upperFence)] #trim to better range
                 lowerFence,Q1,Q2,Q3,upperFence = utils.boxplotStats(upperTriangle)#get quartiles and fence
-                print lowerFence,Q1,Q2,Q3,upperFence
+                print(lowerFence,Q1,Q2,Q3,upperFence)
             if target == "median":
                 fmax = Q2#get median
             elif target == "mean":
                 fmax = upperTriangle.mean()#get mean
             else:
-                raise RuntimeError, "target take only 'median' or 'mean' method"
+                raise RuntimeError("target take only 'median' or 'mean' method")
         else:
-            raise RuntimeError, "Please use legal method parameters:'NM' or 'UF'!"
+            raise RuntimeError("Please use legal method parameters:'NM' or 'UF'!")
         return fmax
     
     #-----------------------use fmax to get prob matrix
@@ -545,20 +548,20 @@ class contactmatrix(object):
         P[i,j] = F[i,j]/min(fmax[i],fmax[j])
         """
         if self.applyed('probabilityMatrix') and (not force):
-            raise RuntimeError, "This is already a probability matrix!,use force to overwrite"
+            raise RuntimeError("This is already a probability matrix!,use force to overwrite")
         if isinstance(fmax,float) or isinstance(fmax,np.float32) or isinstance(fmax,int):
-            print "Uniform fmax detected"
+            print("Uniform fmax detected")
             self.matrix = self.matrix/fmax
             self.matrix = self.matrix.clip(max=1)
             self._applyedMethods['probabilityMatrix'] = 'Uniform Fmax=%f' % (fmax)
         elif isinstance(fmax,np.ndarray):
             from numutils import neighbourFmaximization
             if len(self) != len(fmax):
-                raise ValueError,"Matrix and fmax dimension doesn't match! please check fmax length."
+                raise ValueError("Matrix and fmax dimension doesn't match! please check fmax length.")
             self.matrix = neighbourFmaximization(self.matrix,fmax)
             self._applyedMethods['probabilityMatrix'] = 'Neighbouring Fmax'
         else:
-            raise AttributeError, "Not supported fmax type!"
+            raise AttributeError( "Not supported fmax type!")
     
     
     def assignDomain(self,domain,pattern=''):
@@ -572,7 +575,7 @@ class contactmatrix(object):
         """
         from files import bedgraph
         if not isinstance(domain,bedgraph):
-            raise TypeError,"Bedgraph instance required, see alab.files.bedgraph for more details"
+            raise TypeError("Bedgraph instance required, see alab.files.bedgraph for more details")
         self.domainIdx = domain.filter(pattern)
         
     def _generateMedianSummaryMatrix(self,summaryBinStart,summaryBinEnd):
@@ -630,9 +633,9 @@ class contactmatrix(object):
             removeOutlier : option to remove outlier using 1.5IQR
         """
         if self.applyed('domainLevel'):
-            raise RuntimeError, "This is already a domain level matrix!"
+            raise RuntimeError( "This is already a domain level matrix!")
         if not hasattr(self,"domainIdx"):
-            raise RuntimeError, "Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO"
+            raise RuntimeError("Please use assignDomain(domain_bedgraph,pattern) to assign domain INFO")
             
         domainLevelMatrix = contactmatrix(len(self.domainIdx))
         domainLevelMatrix._buildindex(self.domainIdx['chrom'],self.domainIdx['start'],self.domainIdx['end'],self.domainIdx['flag'])
@@ -668,7 +671,7 @@ class contactmatrix(object):
         domainMean = 0
         originMatrix = copy.deepcopy(self.matrix)
         while abs(domainMean - domainAverageContacts)/domainAverageContacts > tol:
-            print "fmax=%f"%(fmax)
+            print("fmax=%f"%(fmax))
             self.matrix = copy.deepcopy(originMatrix)
             self.fmaxScaling(fmax,force=True)
             domainLevelMatrix = self.makeDomainLevelMatrix(**kwargs)
@@ -800,9 +803,9 @@ def compareMatrix(m1,m2,figurename = 'comparison.png',**kwargs):
         filename for columnwise pearson corr histogram, set None to escape this step
     """
     if not (isinstance(m1,contactmatrix) and isinstance(m2,contactmatrix)):
-        raise TypeError, "Invalid argument type, 2 contactmatrixes are required"
+        raise TypeError("Invalid argument type, 2 contactmatrixes are required")
     if len(m1) != len(m2):
-        raise TypeError, "Invalid argument, dimensions of matrixes must meet"
+        raise TypeError("Invalid argument, dimensions of matrixes must meet")
     from scipy.stats import spearmanr,pearsonr
     
     flat1 = m1.matrix.flatten()
@@ -810,10 +813,10 @@ def compareMatrix(m1,m2,figurename = 'comparison.png',**kwargs):
     nonzeros = (flat1 > 0) * (flat2 > 0)
     flat1 = flat1[nonzeros]
     flat2 = flat2[nonzeros]
-    print 'pearsonr:'
-    print pearsonr(flat1,flat2)
-    print 'spearmanr:'
-    print spearmanr(flat1,flat2)
+    print('pearsonr:')
+    print(pearsonr(flat1,flat2))
+    print('spearmanr:')
+    print(spearmanr(flat1,flat2))
     del flat1
     del flat2
     if not (figurename is None):
@@ -854,7 +857,7 @@ def loadhic(filename,genome='hg19',resolution=100000,usechr=['#','X'],verbose=Fa
             if i > j:
                 continue
             if verbose:
-                print chr1,chr2
+                print(chr1,chr2)
             
             result = straw.straw("NONE",filename,chr1[3:],chr2[3:],'BP',resolution)
             for t in range(len(result[0])):
@@ -877,7 +880,7 @@ def loadcooler(filename,usechr=['#','X'],verbose=False):
     nbins      = h5.attrs['nbins']
     
     if verbose:
-        print genome, resolution
+        print(genome, resolution)
     
     tgenome = utils.genome(genome)
     bininfo = tgenome.bininfo(resolution)
