@@ -32,7 +32,7 @@ import time
 import warnings
 import numpy as np
 from collections import namedtuple
-from aio import loadstream
+from .aio import loadstream
 
 #===========================================================================
 class genome(object):

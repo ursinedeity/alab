@@ -34,8 +34,8 @@ try:
 except:
    import pickle
 import warnings
-from plots import plotxy, plotmatrix, histogram
-import utils
+from .plots import plotxy, plotmatrix, histogram
+from . import utils
 
 class contactmatrix(object):
     """
@@ -77,7 +77,7 @@ class contactmatrix(object):
                     self.resolution = cPickle.loads(h5f['resolution'].value)
                 h5f.close()
             else:
-                from aio import loadstream
+                from .aio import loadstream
                 f    = loadstream(filename)
                 s    = f.next()
                 line = re.split('\t+|\s+',s.rstrip())
@@ -275,7 +275,7 @@ class contactmatrix(object):
             but this will slowdown the process a little bit.     
         """
         if (not self.applyed('normalization')) or force:
-            from norm import bnewt
+            from .norm import bnewt
             self._getMask(mask)
             x = bnewt(self.matrix,mask=self.mask,check=0,**kwargs)*100
             self.matrix *= x 
@@ -304,7 +304,7 @@ class contactmatrix(object):
       
     def icenorm(self,mask = None,force=False):
         if (not self.applyed('normalization')) or force:
-            from numutils import ultracorrectSymmetricWithVector
+            from .numutils import ultracorrectSymmetricWithVector
             if mask is None:
                 self._getMask(mask)
             else:
@@ -328,7 +328,7 @@ class contactmatrix(object):
             skipping the normalization step, the matrix will not be affected
         """
         if (not self.applyed('diagnorm')) or force:
-            from norm import diagnorm
+            from .norm import diagnorm
             self.matrix, diagMean, diagSum, diagCount = diagnorm(self.matrix,countzero,norm)
             if norm:
                 self._applyedMethods['diagnorm'] = [diagMean,diagSum,diagCount]
@@ -555,7 +555,7 @@ class contactmatrix(object):
             self.matrix = self.matrix.clip(max=1)
             self._applyedMethods['probabilityMatrix'] = 'Uniform Fmax=%f' % (fmax)
         elif isinstance(fmax,np.ndarray):
-            from numutils import neighbourFmaximization
+            from .numutils import neighbourFmaximization
             if len(self) != len(fmax):
                 raise ValueError("Matrix and fmax dimension doesn't match! please check fmax length.")
             self.matrix = neighbourFmaximization(self.matrix,fmax)
@@ -573,7 +573,7 @@ class contactmatrix(object):
             pattern:str
                 a string use to filter the flags in the bedgraph
         """
-        from files import bedgraph
+        from .files import bedgraph
         if not isinstance(domain,bedgraph):
             raise TypeError("Bedgraph instance required, see alab.files.bedgraph for more details")
         self.domainIdx = domain.filter(pattern)

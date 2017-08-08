@@ -27,7 +27,7 @@ __email__   = "nhua@usc.edu"
 import numpy as np
 import math
 import time
-import numutils
+from . import numutils
 
 def chunking_dot(big_matrix, small_matrix, chunk_size=10000):
     # Make a copy if the array is not already contiguous

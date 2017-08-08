@@ -28,8 +28,8 @@ __license__ = "GPL"
 __version__ = "0.0.1"
 __email__   = "nhua@usc.edu"
 
-import matrix
-import utils
+from . import matrix
+from . import utils
 import time
 import numpy as np
 import IMP
@@ -614,8 +614,10 @@ class tadmodel(object):
             pymfile.add_geometry(g2)
 
     def saveCoordinates(self,filename,prefix):
-        import cPickle
-        import cStringIO
+        try:
+            import cPickle as pickle
+        except:
+            import pickle
         if (filename[-4:] != '.hms'):
             filename += '.hms'
         log_contents = self._log_capture_string.getvalue()

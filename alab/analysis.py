@@ -33,10 +33,10 @@ try:
    import cPickle as pickle
 except:
    import pickle
-import matrix
-import utils
-import files
-import plots
+from . import matrix
+from . import utils
+from . import files
+from . import plots
 import copy
 
 class structuresummary(object):

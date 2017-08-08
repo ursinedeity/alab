@@ -52,7 +52,7 @@ class bedgraph(object):
         self.itr             = 0
         if not filename is None:
             if isinstance(filename,str):
-                from aio import loadstream
+                from .aio import loadstream
                 f = loadstream(filename)
                 readtable = np.genfromtxt(
                                     f,
@@ -337,7 +337,7 @@ class modelgroup(object):
         return 0
     #=
     def savepdb(self,filename):
-        import utils
+        from . import utils
         pymfile = open(filename,'w')
         pymfile.write(utils.convertPDB(self.xyz,self.r,self.idx))
         pymfile.flush()
