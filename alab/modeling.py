@@ -639,7 +639,7 @@ class tadmodel(object):
         self.cache_coordinates()
         h5f = h5py.File(filename,'a')
         if not 'genome' in h5f.keys():
-            h5f.create_dataset('genome',data = cPickle.dumps(self.probmat.genome))
+            h5f.create_dataset('genome',data = pickle.dumps(self.probmat.genome))
         if not 'idx' in h5f.keys():
             h5f.create_dataset('idx',data = self.probmat.idx,compression='gzip')
         if prefix in h5f.keys():
@@ -653,19 +653,19 @@ class tadmodel(object):
             else:
                 grp.create_dataset('r',data=self.r,compression='gzip')
             if 'log' in grp.keys():
-                grp['log'][...] = cPickle.dumps(log_contents)
+                grp['log'][...] = pickle.dumps(log_contents)
             else:
-                grp.create_dataset('log',data=cPickle.dumps(log_contents))
+                grp.create_dataset('log',data=pickle.dumps(log_contents))
             if 'pym' in grp.keys():
-                grp['pym'][...] = cPickle.dumps(pymhandler.getvalue())
+                grp['pym'][...] = pickle.dumps(pymhandler.getvalue())
             else:
-                grp.create_dataset('pym',data=cPickle.dumps(pymhandler.getvalue()))
+                grp.create_dataset('pym',data=pickle.dumps(pymhandler.getvalue()))
         else:
             grp = h5f.create_group(prefix)
             grp.create_dataset('xyz',data=self.xyz,compression='gzip')
             grp.create_dataset('r',data=self.r,compression='gzip')
-            grp.create_dataset('log',data=cPickle.dumps(log_contents))
-            grp.create_dataset('pym',data=cPickle.dumps(pymhandler.getvalue()))
+            grp.create_dataset('log',data=pickle.dumps(log_contents))
+            grp.create_dataset('pym',data=pickle.dumps(pymhandler.getvalue()))
         h5f.close()
 #====================================end tadmodel
 

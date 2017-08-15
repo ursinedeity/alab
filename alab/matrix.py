@@ -70,11 +70,11 @@ class contactmatrix(object):
                 self.matrix = h5f['matrix'][:]
                 self.idx    = h5f['idx'][:]
                 if 'applyedMethods' in h5f.keys():
-                    self._applyedMethods = cPickle.loads(h5f['applyedMethods'].value)
+                    self._applyedMethods = pickle.loads(h5f['applyedMethods'].value)
                 
                 if 'genome' in h5f.keys() and 'resolution' in h5f.keys():         
-                    self.genome     = cPickle.loads(h5f['genome'].value)
-                    self.resolution = cPickle.loads(h5f['resolution'].value)
+                    self.genome     = pickle.loads(h5f['genome'].value)
+                    self.resolution = pickle.loads(h5f['resolution'].value)
                 h5f.close()
             else:
                 from .aio import loadstream
@@ -780,10 +780,10 @@ class contactmatrix(object):
         h5f = h5py.File(filename, 'w')
         h5f.create_dataset('matrix', data=self.matrix, compression = 'gzip', compression_opts=9)
         h5f.create_dataset('idx', data=self.idx, compression = 'gzip', compression_opts=9)
-        h5f.create_dataset('applyedMethods', data=cPickle.dumps(self._applyedMethods))
+        h5f.create_dataset('applyedMethods', data=pickle.dumps(self._applyedMethods))
         if hasattr(self,"genome") and hasattr(self,"resolution"):
-            h5f.create_dataset('genome',data = cPickle.dumps(self.genome))
-            h5f.create_dataset('resolution',data = cPickle.dumps(self.resolution))
+            h5f.create_dataset('genome',data = pickle.dumps(self.genome))
+            h5f.create_dataset('resolution',data = pickle.dumps(self.resolution))
         else:
             warnings.warn("No genome and resolution is specified, attributes are recommended for matrix.")
         
@@ -835,10 +835,10 @@ def compareMatrix(m1,m2,figurename = 'comparison.png',**kwargs):
 #----------------------------------------------------------------------
 def loadh5dict(filename,usechr=['#','X']):
     h5f    = h5py.File(filename,'r')
-    genome           = cPickle.loads(h5f['genome'].value)
-    resolution       = cPickle.loads(h5f['resolution'].value)
-    #genomeIdxToLabel = cPickle.loads(h5f['genomeIdxToLabel'].value)
-    binNumber        = cPickle.loads(h5f['binNumber'].value)
+    genome           = pickle.loads(h5f['genome'].value)
+    resolution       = pickle.loads(h5f['resolution'].value)
+    #genomeIdxToLabel = pickle.loads(h5f['genomeIdxToLabel'].value)
+    binNumber        = pickle.loads(h5f['binNumber'].value)
     newMatrix = contactmatrix(binNumber,genome,resolution,usechr=usechr)
     newMatrix.matrix[:] = h5f['heatmap'][:]
     return newMatrix
